@@ -4,6 +4,7 @@ import pickle
 import os
 import sys
 from progress.bar import Bar
+from mido import MidiFile, Message
 
 RANGE_NOTE_ON = 128
 RANGE_NOTE_OFF = 128
@@ -255,6 +256,44 @@ def decode_midi(idx_array, file_path=None):
         mid.write(file_path)
     return mid
 
+def split(inputPath, outputPath, keep_low):
+    """
+    Loads the midi file in path with mido, replace the upper
+    (lower) notes with rests and save the ouptut in the output directory
+    """
+    mid = MidiFile(inputPath)
+    if keep_low:
+        for i, track in enumerate(mid.tracks):
+            for i, msg in enumerate(track):
+                if msg.type == 'note_on' and msg.note > 64:
+                    rest=Message('note_off')
+                    rest.velocity=msg.velocity
+                    rest.time=msg.time
+                    track[i]=rest
+    else:
+        for i, track in enumerate(mid.tracks):
+            for i, msg in enumerate(track):
+                if msg.type == 'note_on' and msg.note <= 64:
+                    rest=Message('note_off')
+                    rest.velocity=msg.velocity
+                    rest.time=msg.time
+                    track[i]=rest
+
+    mid.save(outputPath)
+
+def split_high_low(midi_root, save_dir):
+    midi_paths = list(utils.find_files_by_extensions(midi_root, ['.mid', '.midi']))
+
+    os.makedirs(save_dir+'low', exist_ok=True)
+    os.makedirs(save_dir+'high', exist_ok=True)
+
+    for path in Bar('Processing').iter(midi_paths):
+        print(' ', end='[{}]'.format(path), flush=True)
+        fname = os.path.basename(path)
+        split(path, save_dir+'low'+'/'+ fname, keep_low = True)   
+        split(path, save_dir+'high'+'/'+ fname, keep_low = False) 
+
+
 def preprocess_midi_files(midi_root, save_dir):
     midi_paths = list(utils.find_files_by_extensions(midi_root, ['.mid', '.midi']))
 
@@ -278,28 +317,25 @@ def preprocess_midi_files(midi_root, save_dir):
 
 if __name__ == '__main__':
 
-    midi_root = '/home/pearl/myGit/deep-learning/maestro-v2.0.0'
-    save_dir = '/home/pearl/myGit/deep-learning/Data/left'
+    
+    # midi_root = '/home/pearl/myGit/PianoBot/maestro-v2.0.0/'
+    # save_dir = '/home/pearl/myGit/PianoBot/data_splited/'
 
+    # split_high_low(midi_root, save_dir)
+
+
+    midi_root = '/home/pearl/myGit/PianoBot/data_splited/high/'
+    save_dir = '/home/pearl/myGit/PianoBot/data_encoded/high/'
     preprocess_midi_files(midi_root, save_dir)
 
-    midi_root = '/home/pearl/myGit/deep-learning/maestro-v2.0.0'
-    save_dir = '/home/pearl/myGit/deep-learning/Data/right'
-
+    midi_root = '/home/pearl/myGit/PianoBot/data_splited/low/'
+    save_dir = '/home/pearl/myGit/PianoBot/data_encoded/low/'
     preprocess_midi_files(midi_root, save_dir)
+
 
     # midi_path = 'maestro-v2.0.0/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
     # #midi_path = 'cello-C-chord.mid'
     # encoded = encode_midi(midi_path)
     # print(encoded)
     # print("Length of the encoded midi is", len(encoded))
-
-    # decided = decode_midi(encoded,file_path='test.mid')
-
-    # ins = pretty_midi.PrettyMIDI(midi_path)
-    # print(ins.instruments)
-
-    # # for i in ins.instruments:
-    # #     print(i.control_changes)
-    # #     print(i.notes)
 
