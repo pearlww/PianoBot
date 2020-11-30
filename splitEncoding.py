@@ -26,7 +26,7 @@ def split_encoding(int_array, max_time):
             note_array[event] = True
             part.append(event)
         elif event < START_IDX['note_off']:
-            if note_array[event]:
+            if note_array[event - START_IDX['note_off']]:
                 note_array[event] = False
                 part.append(event)
             #Note that, in the else clause, we keep the note off 
