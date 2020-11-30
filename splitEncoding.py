@@ -36,10 +36,11 @@ def split_encoding(int_array, max_time):
             #Can happen after splits
         elif event < START_IDX['velocity']:
             #time shift event
-            time += event - START_IDX['time_shift'] #Increment time
+            shift = event - START_IDX['time_shift']
+            time += shift #Increment time
             if time >= max_time:
                 #This last shift overlaps the splitting point
-                finish_time = time - max_time
+                finish_time = shift - (time - max_time)
                 #Append the correct duration to the part
                 part.append(START_IDX['time_shift'] + finish_time)
                 #Save it
