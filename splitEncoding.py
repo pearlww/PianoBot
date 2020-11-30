@@ -22,17 +22,20 @@ def split_encoding(int_array, max_time):
     part=[]
     
     for event in int_array:
-        if event < START_IDX['note_on']:
+        if event < START_IDX['note_off']:
+            #note_on event
             note_array[event] = True
             part.append(event)
-        elif event < START_IDX['note_off']:
+        elif event < START_IDX['time_shift']:
+            #note off event
             if note_array[event - START_IDX['note_off']]:
                 note_array[event] = False
                 part.append(event)
             #Note that, in the else clause, we keep the note off 
             #AND we don't add that unnecessary event to the part
             #Can happen after splits
-        elif event < START_IDX['time_shift']:
+        elif event < START_IDX['velocity']:
+            #time shift event
             time += event - START_IDX['time_shift'] #Increment time
             if time >= max_time:
                 #This last shift overlaps the splitting point
