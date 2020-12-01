@@ -1,4 +1,6 @@
 
+import numpy as np
+
 #Returns an array of integer sequences [ [part1], [part2], ...]
 
 RANGE_NOTE_ON = 128
@@ -13,15 +15,21 @@ START_IDX = {
     'velocity': RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT
 }
 
+vocab_size = RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_VEL + RANGE_TIME_SHIFT
+
 #max_time in milliseconds
 def split_encoding(int_array, max_time):
-    max_time = max_time / 8 #In time shift units
+    max_time = max_time / 10 #In time shift units
     time = 0
-    note_array=[False]*128  #Note on/Note off array
+    note_array=[False]*RANGE_NOTE_ON  #Note on/Note off array
     res=[]
     part=[]
     
+    #print("Int array: ")
+    #print(str(int_array))
+    
     for event in int_array:
+        
         if event < START_IDX['note_off']:
             #note_on event
             note_array[event] = True
@@ -29,7 +37,7 @@ def split_encoding(int_array, max_time):
         elif event < START_IDX['time_shift']:
             #note off event
             if note_array[event - START_IDX['note_off']]:
-                note_array[event] = False
+                note_array[event - START_IDX['note_off']] = False
                 part.append(event)
             #Note that, in the else clause, we keep the note off 
             #AND we don't add that unnecessary event to the part
@@ -46,11 +54,24 @@ def split_encoding(int_array, max_time):
                 #Save it
                 res.append(part)
                 #Reset timer
+                part = []
                 time = 0
             else:
                 part.append(event)
         else:
             #Velocity. Just append
             part.append(event)
-    
+    #The last part
+    res.append(part)
     return res
+
+def one_hot_vector(note):
+    vector = np.zeros(vocab_size)
+    vector[int(note)] = 1
+    return vector
+
+def one_hot_sequence(int_array):
+    sequence = np.array([one_hot_vector(note) for note in int_array])
+    sequence.reshape((len(int_array), vocab_size))
+    print(sequence.shape)
+    return sequence
