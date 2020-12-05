@@ -132,10 +132,15 @@ if __name__ == '__main__':
     print("Size of batch x: " + str(len(batch_x)))
     print("Size of batch y: " + str(len(batch_y)))
     
+    print(batch_x)
+    batch_x = np.array(batch_x)
+    batch_y = np.array(batch_y)
+    
+    """
     batch_x = [one_hot_sequence(seq) for seq in batch_x]
     print(len(batch_x))
     print(batch_x[0].shape)
-    
+    """
     """
     Batch_x is a python array of sequences that can be fed into the RNN.
     Each sequence is a 2-D ndarray of dimensions (N_notes, 388)
