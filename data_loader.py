@@ -3,7 +3,6 @@ import random
 import pickle
 import numpy as np
 
-
 class DataLoader:
     def __init__(self, high_path, low_path):
         self.X = list(utils.find_files_by_extensions(high_path, ['.pickle']))
@@ -55,51 +54,6 @@ class DataLoader:
         #     else:
         #         raise IndexError
         # return data
-
-    def seq2seq_batch(self, batch_size, length, mode='train'):
-        data = self.batch(batch_size, length * 2, mode)
-        x = data[:, :length]
-        y = data[:, length:]
-        return x, y
-
-    def smallest_encoder_batch(self, batch_size, length, mode='train'):
-        data = self.batch(batch_size, length * 2, mode)
-        x = data[:, :length//100]
-        y = data[:, length//100:length//100+length]
-        return x, y
-
-    def slide_seq2seq_batch(self, batch_size, length, mode='train'):
-        data = self.batch(batch_size, length+1, mode)
-        x = data[:, :-1]
-        y = data[:, 1:] # y is just one right shift of x
-        return x, y
-
-    def random_sequential_batch(self, batch_size, length):
-        batch_files = random.sample(self.files, k=batch_size)
-        batch_data = []
-        for i in range(batch_size):
-            data = self._get_seq(batch_files[i])
-            for j in range(len(data) - length):
-                batch_data.append(data[j:j+length])
-                if len(batch_data) == batch_size:
-                    return batch_data
-
-    def sequential_batch(self, batch_size, length):
-        batch_data = []
-        data = self._get_seq(self.files[self._seq_file_name_idx])
-
-        while len(batch_data) < batch_size:
-            while self._seq_idx < len(data) - length:
-                batch_data.append(data[self._seq_idx: self._seq_idx + length])
-                self._seq_idx += 1
-                if len(batch_data) == batch_size:
-                    return batch_data
-
-            self._seq_idx = 0
-            self._seq_file_name_idx = self._seq_file_name_idx + 1
-            if self._seq_file_name_idx == len(self.files):
-                self._seq_file_name_idx = 0
-                print('iter intialized')
 
 
 

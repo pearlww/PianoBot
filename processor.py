@@ -94,7 +94,6 @@ class Event:
             valid_value -= (RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT)
             return {'type': 'velocity', 'value': valid_value}
 
-
 def _divide_note(notes):
     result_array = []
     notes.sort(key=lambda x: x.start)
@@ -318,10 +317,10 @@ def preprocess_midi_files(midi_root, save_dir):
 if __name__ == '__main__':
 
     
-    # midi_root = '/home/pearl/myGit/PianoBot/maestro-v2.0.0/'
-    # save_dir = '/home/pearl/myGit/PianoBot/data_splited/'
+    midi_root = '/home/pearl/myGit/PianoBot/maestro-v2.0.0/'
+    save_dir = '/home/pearl/myGit/PianoBot/data_splited/'
 
-    # split_high_low(midi_root, save_dir)
+    split_high_low(midi_root, save_dir)
 
 
     midi_root = '/home/pearl/myGit/PianoBot/data_splited/high/'
