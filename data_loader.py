@@ -81,7 +81,7 @@ class DataLoader:
 
 if __name__ == '__main__':
 
-    path = '/home/max/Documents/DTU/Deep Learning/Project/encoded/'
+    path = './encoded/'
     dataset = DataLoader( path+'high', path+'low')
     batch_x, batch_y = dataset.batch(10, 2048)
     print("Size of batch x: " + str(len(batch_x)))
