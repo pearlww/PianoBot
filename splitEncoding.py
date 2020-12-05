@@ -24,6 +24,7 @@ def split_encoding(int_array, max_time):
     note_array=[False]*RANGE_NOTE_ON  #Note on/Note off array
     res=[]
     part=[]
+    times=[]
     
     #print("Int array: ")
     #print(str(int_array))
@@ -53,6 +54,8 @@ def split_encoding(int_array, max_time):
                 part.append(START_IDX['time_shift'] + finish_time)
                 #Save it
                 res.append(part)
+                #Debug: comment when its done
+                times.append(time - shift + finish_time)
                 #Reset timer
                 part = []
                 time = 0
@@ -63,6 +66,8 @@ def split_encoding(int_array, max_time):
             part.append(event)
     #The last part
     res.append(part)
+    times.append(time)
+    #print("Times: " + str(times))
     return res
 
 def one_hot_vector(note):
