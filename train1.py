@@ -31,7 +31,6 @@ model = MusicTransformer(
             num_layer=config.num_layers,
             max_seq= config.max_seq,
             dropout=config.dropout,
-            debug=config.debug
 )
 
 model.to(config.device)

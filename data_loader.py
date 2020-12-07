@@ -2,7 +2,7 @@ import utils
 import random
 import pickle
 import numpy as np
-from splitEncoding import split_encoding, one_hot_sequence
+from splitEncoding import split_encoding, crop_pad_sequences
 from processor import decode_midi
 import config
 
@@ -53,7 +53,7 @@ class DataLoader:
 
         return batch_x, batch_y
         
-    def _get_seq(self, pair_file, max_length=None, pad_token = config.pad_token, path=None):
+    def _get_seq(self, pair_file, max_length, pad_token = config.pad_token, path=None):
         x_file, y_file = pair_file 
         
         if path is not None:
@@ -61,12 +61,11 @@ class DataLoader:
             y_file="./encoded/low/" + path
 
         with open(x_file, 'rb') as f:
-            #print("File: " + str(x_file))
+            print("File: " + str(x_file))
             x = pickle.load(f)
-            #print(len(x))
 
         with open(y_file, 'rb') as f:
-            #print("File: " + str(y_file))
+            print("File: " + str(y_file))
             y = pickle.load(f)
 
         millisecs = 50000
@@ -74,20 +73,21 @@ class DataLoader:
         resX = split_encoding(x, millisecs)
         resY = split_encoding(y, millisecs)
 
-        #print("resX length: " + str(len(resX)))
-        #print("resY length: " + str(len(resY)))
+        # print("resX length: " + str(len(resX)))
+        # print("resY length: " + str(len(resY)))
 
         r=np.random.randint(0,min(len(resX), len(resY)))
-
-        x = resX[0]
-        y = resY[0]
+        
+        x = resX[r]
+        y = resY[r]
         # print("First part X: " + str(len(resX[0])))
         # print("First part Y: " + str(len(resY[0])))
-    
+        
+        """
         if len(x)<2048:
             for i in range(2048-len(x)):
                 x.append(pad_token)
-        else:
+        elif len(x)>2048:
             x = x[0:2048]
 
         if len(y)<2048:
@@ -98,7 +98,10 @@ class DataLoader:
 
         decode_midi(x, "./X.midi")
         decode_midi(y, "./Y.midi")
-
+        """
+        
+        x, y = crop_pad_sequences(x, y, pad_token, max_length)
+        
         return (x,y)
         # # cut the data, keep them have the same length (max_length)
         # if max_length is not None:
@@ -108,21 +111,30 @@ class DataLoader:
         #     else:
         #         raise IndexError
         # return data
+        
 
-
+def test():
+    file="/home/max/Documents/DTU/Deep Learning/Project/MusicTransformer-pytorch/originalEncoding/MIDI-Unprocessed_01_R1_2009_01-04_ORIG_MID--AUDIO_01_R1_2009_01_R1_2009_01_WAV.midi.pickle"
+    with open(file, 'rb') as f:
+        x = pickle.load(f)
+        decode_midi(x, "./test/originalDecoded.midi")
+    
+    
 
 if __name__ == '__main__':
 
     path = './encoded/'
     dataset = DataLoader( path+'high', path+'low')
-    batch_x, batch_y = dataset.batch(1, 2048, path="MIDI-Unprocessed_01_R1_2009_01-04_ORIG_MID--AUDIO_01_R1_2009_01_R1_2009_01_WAV.midi.pickle")
-
+    batch_x, batch_y = dataset.batch(1, 2048) #, path="MIDI-Unprocessed_01_R1_2009_01-04_ORIG_MID--AUDIO_01_R1_2009_01_R1_2009_01_WAV.midi.pickle")
+    
     print("Size of batch x: " + str(len(batch_x)))
     print("Size of batch y: " + str(len(batch_y)))
-    
+    print("Batch x:")
     print(batch_x)
-    # batch_x = np.array(batch_x)
-    # batch_y = np.array(batch_y)
+    print("Batch y:")
+    print(batch_y)
+    #batch_x = np.array(batch_x)
+    #batch_y = np.array(batch_y)
     
     """
     batch_x = [one_hot_sequence(seq) for seq in batch_x]
