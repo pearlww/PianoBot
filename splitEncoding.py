@@ -128,8 +128,8 @@ def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
             return slow_sequence, longestSeq
         
     else:
-        x = pad_sequence(seqX)
-        y = pad_sequence(seqY)
+        x = pad_sequence(seqX, pad_token, maxint)
+        y = pad_sequence(seqY, pad_token, maxint)
         return x, y
 
 #Calculates and returns how many timesteps are in the given sequence
