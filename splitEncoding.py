@@ -80,3 +80,88 @@ def one_hot_sequence(int_array):
     sequence.reshape((len(int_array), vocab_size))
     print(sequence.shape)
     return sequence
+
+
+#Will return the sequences X and Y correctly cut or padded, according to
+#the maximum number of integers that we want
+def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
+    longestSeq = None
+    shortestSeq = None
+    x_longest = True
+    
+    if len(seqX)>=len(seqY):
+        longestSeq = seqX
+        shortestSeq = seqY
+        x_longest = True
+    else:
+        longestSeq = seqY
+        shortestSeq = seqX
+        x_longest = False
+        
+    if len(longestSeq) > maxint:
+        longestSeq = longestSeq[0:maxint]
+        #We have to calculate how much does the sequence with maxint ints lasts
+        shortest_time = calculate_time(longestSeq)
+        print("Time of longest sequence cropped: " + str(shortest_time))
+        slow_sequence = shortestSeq
+
+        #Might be that the other sequence is longer than maxint ints too. Might even happen that,
+        #between the maxint ints, the shortest sequence is actually faster.
+        if len(shortestSeq) > maxint:
+            shortestSeq = shortestSeq[0:maxint]
+            slow_sequence = shortestSeq
+            other_time = calculate_time(shortestSeq)
+            print("Time of shortest sequence cropped: " + str(other_time))
+            if other_time < shortest_time:
+                slow_sequence = longestSeq
+                longestSeq = shortestSeq
+                shortest_time = other_time
+                x_longest = not x_longest
+        
+        slow_sequence = cut_time(slow_sequence, shortest_time)
+        print("Slow sequence cutted legnth: " + str(len(slow_sequence)))
+        slow_sequence = pad_sequence(slow_sequence, pad_token, maxint)
+        
+        if x_longest:
+            return longestSeq, slow_sequence
+        else:
+            return slow_sequence, longestSeq
+        
+    else:
+        x = pad_sequence(seqX)
+        y = pad_sequence(seqY)
+        return x, y
+
+#Calculates and returns how many timesteps are in the given sequence
+def calculate_time(longSeq):
+    longSeq_time = 0
+    for event in longSeq:
+        if (event >= START_IDX['time_shift']) and (event < START_IDX['velocity']):
+            #Time event
+            longSeq_time += event - START_IDX['time_shift']
+
+    return longSeq_time
+
+
+#Returns the sequence cut at a certain time
+def cut_time(seq, maxtime):
+    time=0
+    for i, event in enumerate(seq):
+        if (event >= START_IDX['time_shift']) and (event < START_IDX['velocity']):
+            #Time event
+            shift = event - START_IDX['time_shift']
+            time += shift #Increment time
+            if time > maxtime:
+                #This last shift overlaps the splitting point
+                finish_time = shift - (time - maxtime)
+                ret = seq[0:i]
+                ret.append(finish_time)
+                return ret
+    return seq
+
+#Input: a shorter sequence than maxint.
+#Return: a maxint sequence padded with the given token
+def pad_sequence(seq, pad_token, maxint=2048):
+    for i in range(maxint-len(seq)):
+        seq.append(pad_token)
+    return seq

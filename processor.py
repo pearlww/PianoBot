@@ -322,12 +322,12 @@ if __name__ == '__main__':
 
     split_high_low(midi_root, save_dir)
 
-    midi_root = '/home/max/Documents/DTU/Deep Learning/Project/output/high/'
-    save_dir = '/home/max/Documents/DTU/Deep Learning/Project/encoded/high/'
+    midi_root = './output/high/'
+    save_dir = './encoded/high/'
     preprocess_midi_files(midi_root, save_dir)
 
-    midi_root = '/home/max/Documents/DTU/Deep Learning/Project/output/low/'
-    save_dir = '/home/max/Documents/DTU/Deep Learning/Project/encoded/low/'
+    midi_root = './output/low/'
+    save_dir = './encoded/low/'
     preprocess_midi_files(midi_root, save_dir)
 
 
