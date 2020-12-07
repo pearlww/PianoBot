@@ -1,6 +1,6 @@
 import config
 
-from transfomer import MusicTransformer
+from transformer import MusicTransformer
 import loss_functions
 
 from data_loader import DataLoader
@@ -31,7 +31,7 @@ model = MusicTransformer(
             num_layer=config.num_layers,
             max_seq= config.max_seq,
             dropout=config.dropout,
-            debug=config.debug, loader_path=None
+            debug=config.debug
 )
 
 model.to(config.device)
@@ -57,14 +57,14 @@ for e in range(config.epochs):
     print(">>> [Epoch was updated]")
     for b in range(len(dataset.X) // config.batch_size):
 
-        batch_x, batch_y = dataset.batch(config.batch_size, config.max_seq) 
+        batch_x, batch_y = dataset.batch(config.batch_size, config.max_seq, 'train') 
         batch_x = torch.from_numpy(batch_x).contiguous().to(config.device, non_blocking=True, dtype=torch.int)
         batch_y = torch.from_numpy(batch_y).contiguous().to(config.device, non_blocking=True, dtype=torch.int)
 
         start_time = time.time()
         model.train()
 
-        outputs, weights= model.forward(batch_x)
+        outputs = model.forward(batch_x)
         train_loss = criterion(outputs, batch_y)
 
         optimizer.zero_grad()
@@ -84,7 +84,7 @@ for e in range(config.epochs):
             eval_x = torch.from_numpy(eval_x).contiguous().to(config.device, dtype=torch.int)
             eval_y = torch.from_numpy(eval_y).contiguous().to(config.device, dtype=torch.int)
 
-            eval_preiction, weights = model.forward(eval_x)
+            eval_preiction = model.forward(eval_x)
 
             eval_loss = criterion(eval_preiction, eval_y)
             torch.save(model.state_dict(), config.model_dir+'/train-{}.pth'.format(e))
@@ -93,10 +93,6 @@ for e in range(config.epochs):
                 train_summary_writer.add_histogram("target_analysis", batch_y, global_step=e)
                 train_summary_writer.add_histogram("source_analysis", batch_x, global_step=e)
 
-            #     for i, weight in enumerate(weights):
-            #         attn_log_name = "attn/layer-{}".format(i)
-            #         utils.attention_image_summary(
-            #             attn_log_name, weight, step=idx, writer=eval_summary_writer)
 
             eval_summary_writer.add_scalar('loss', eval_loss, global_step=idx)
 

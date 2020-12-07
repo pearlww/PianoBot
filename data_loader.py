@@ -35,7 +35,7 @@ class DataLoader:
         # random sample and random start place of a sequence
         batch_pair_files = random.sample(self.pair_dict[mode], k=batch_size)
         
-        #Max:for debugging, choose the second and third song
+        # Max:for debugging, choose the second and third song
         #batch_pair_files = [self.pair_dict[mode][1]]
         batch_x = []
         batch_y = []

@@ -1,15 +1,11 @@
-
-import criterion
 from layers import *
-#from custom.config import config
+import config
 from transformer import MusicTransformer
 from data_loader import DataLoader
 import utils
 from processor import decode_midi, encode_midi
 
 import datetime
-import argparse
-
 from tensorboardX import SummaryWriter
 
 
@@ -29,24 +25,31 @@ mt = MusicTransformer(
     vocab_size=config.vocab_size,
     num_layer=config.num_layers,
     max_seq=config.max_seq,
-    dropout=0,
-    debug=False)
-mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
+    dropout=0)
+    
+mt.load_state_dict(torch.load(config.model_dir+'/train-15.pth'))
 mt.test()
 
-print(config.condition_file)
 
-if config.condition_file is not None:
-    inputs = np.array([encode_midi('dataset/midi/BENABD10.mid')[:500]])
-else:
-    inputs = np.array([[24, 28, 31]])
-    
-inputs = torch.from_numpy(inputs)
-result = mt(inputs, config.length, gen_summary_writer)
+inputs = np.array([encode_midi(config.input_midi)[:500]])
+print("inputs:", inputs)
+targets = np.array([encode_midi(config.target_midi)[:500]])
+print("targets:", targets)
 
-for i in result:
-    print(i)
 
-decode_midi(result, file_path=config.save_path)
+# inputs = torch.from_numpy(inputs)
+# result = mt(inputs, config.length, gen_summary_writer)
+#print("outputs", result)
+# def remove_padding(result):
+#     ret = []
+#     for c in result:
+#         if c!=388:
+#             ret.append(c)
+#     return ret
 
-gen_summary_writer.close()
+# result = remove_padding(result)
+#print("outputs without pad:", result)
+
+# decode_midi(result, file_path=config.save_path)
+
+# gen_summary_writer.close()
