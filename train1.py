@@ -22,11 +22,7 @@ print('| Summary - Device Info : {}'.format(torch.cuda.device))
 
 # load data
 dataset = DataLoader(config.pickle_dir+"high/", config.pickle_dir+"low/")
-print(dataset)
 
-
-# load model
-learning_rate = config.l_r
 
 # define model
 model = MusicTransformer(
@@ -41,7 +37,7 @@ model = MusicTransformer(
 model.to(config.device)
 print(model)
 
-optimizer = optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9)
+optimizer = optim.Adam(model.parameters(), lr=config.l_r, betas=(0.9, 0.98), eps=1e-9)
 criterion = loss_functions.TransformerLoss()
 # criterion = loss_functions.SmoothCrossEntropyLoss(config.label_smooth, config.vocab_size, config.pad_token)
 
@@ -82,7 +78,7 @@ for e in range(config.epochs):
         train_summary_writer.add_scalar('iter_p_sec', end_time-start_time, global_step=idx)
 
 
-        if b % 20 == 0:
+        if b % 100 == 0:
             model.eval()
             eval_x, eval_y = dataset.batch(2, config.max_seq, 'eval')
             eval_x = torch.from_numpy(eval_x).contiguous().to(config.device, dtype=torch.int)
@@ -91,11 +87,11 @@ for e in range(config.epochs):
             eval_preiction, weights = model.forward(eval_x)
 
             eval_loss = criterion(eval_preiction, eval_y)
-            #torch.save(model.state_dict(), args.model_dir+'/train-{}.pth'.format(e))
+            torch.save(model.state_dict(), config.model_dir+'/train-{}.pth'.format(e))
 
-            # if b == 0:
-            #     train_summary_writer.add_histogram("target_analysis", batch_y, global_step=e)
-            #     train_summary_writer.add_histogram("source_analysis", batch_x, global_step=e)
+            if b == 0:
+                train_summary_writer.add_histogram("target_analysis", batch_y, global_step=e)
+                train_summary_writer.add_histogram("source_analysis", batch_x, global_step=e)
 
             #     for i, weight in enumerate(weights):
             #         attn_log_name = "attn/layer-{}".format(i)
@@ -104,16 +100,16 @@ for e in range(config.epochs):
 
             eval_summary_writer.add_scalar('loss', eval_loss, global_step=idx)
 
-            # print('\n====================================================')
-            # print('Epoch:{}/{}'.format(e, config.epochs))
-            # print('Batch: {}/{}'.format(b, len(dataset.) // config.batch_size))
-            # print('Train >>>> Loss: {:6.6}'.format(train_loss))
-            # print('Eval >>>> Loss: {:6.6}'.format(eval_loss))
+            print('\n====================================================')
+            print('Epoch:{}/{}'.format(e, config.epochs))
+            print('Batch: {}/{}'.format(b, len(dataset.X) // config.batch_size))
+            print('Train >>>> Loss: {:6.6}'.format(train_loss))
+            print('Eval >>>> Loss: {:6.6}'.format(eval_loss))
         torch.cuda.empty_cache()
         idx += 1
 
 
-#torch.save(model.state_dict(), args.model_dir+'/final.pth'.format(idx))
+torch.save(model.state_dict(), config.model_dir+'/final.pth'.format(idx))
 eval_summary_writer.close()
 train_summary_writer.close()
 

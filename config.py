@@ -1,6 +1,6 @@
 import torch
 
-pickle_dir = './Small_Data/'
+pickle_dir = './encoded/'
 
 device = torch.device('cpu')
 
@@ -26,6 +26,8 @@ pad_token = event_dim
 token_sos = event_dim + 1
 token_eos = event_dim + 2
 vocab_size = event_dim + 3
+
+model_dir = "."
 
 # experiment: 'embedding512-layer6'
 # max_seq: 2048

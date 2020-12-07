@@ -13,10 +13,6 @@ import argparse
 from tensorboardX import SummaryWriter
 
 
-parser = custom.get_argument_parser()
-args = parser.parse_args()
-config.load(args.model_dir, args.configs, initialize=True)
-
 # check cuda
 if torch.cuda.is_available():
     config.device = torch.device('cuda')
@@ -35,10 +31,11 @@ mt = MusicTransformer(
     max_seq=config.max_seq,
     dropout=0,
     debug=False)
-mt.load_state_dict(torch.load(args.model_dir+'/final.pth'))
+mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
 mt.test()
 
 print(config.condition_file)
+
 if config.condition_file is not None:
     inputs = np.array([encode_midi('dataset/midi/BENABD10.mid')[:500]])
 else:
