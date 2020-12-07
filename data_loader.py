@@ -53,7 +53,7 @@ class DataLoader:
 
         return batch_x, batch_y
         
-    def _get_seq(self, pair_file, max_length=None, pad_token = config.pad_token, path=None):
+    def _get_seq(self, pair_file, max_length, pad_token = config.pad_token, path=None):
         x_file, y_file = pair_file 
         
         if path is not None:
@@ -100,7 +100,7 @@ class DataLoader:
         decode_midi(y, "./Y.midi")
         """
         
-        x, y = crop_pad_sequences(x, y, pad_token, 512)
+        x, y = crop_pad_sequences(x, y, pad_token, max_length)
         
         return (x,y)
         # # cut the data, keep them have the same length (max_length)
