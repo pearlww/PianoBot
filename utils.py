@@ -30,13 +30,14 @@ def sequence_mask(length, max_length=None):
 
 def get_masked_with_pad_tensor(size, src, trg, pad_token):
     """
-    :param size: the size of target input
-    :param src: source tensor
+    :param size: the size of target input ：　max_seq
+    :param src: source tensor　：　(batch_size, seq_length)
     :param trg: target tensor
     :param pad_token: pad token
     :return:
     """
-    src = src[:, None, None, :]
+
+    src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
     trg = trg[:, None, None, :]
     src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
     src_mask = torch.equal(src, src_pad_tensor)
