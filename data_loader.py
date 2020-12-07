@@ -61,11 +61,11 @@ class DataLoader:
             y_file="./encoded/low/" + path
 
         with open(x_file, 'rb') as f:
-            print("File: " + str(x_file))
+            #print("File: " + str(x_file))
             x = pickle.load(f)
 
         with open(y_file, 'rb') as f:
-            print("File: " + str(y_file))
+            #print("File: " + str(y_file))
             y = pickle.load(f)
 
         millisecs = 50000
