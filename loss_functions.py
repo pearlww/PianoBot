@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.nn.modules.loss import CrossEntropyLoss, _Loss
 import config
 
+from more_loss_functions import better_loss
+
 class TransformerLoss(CrossEntropyLoss):
     def __init__(self, ignore_index=config.pad_token, reduction='mean') -> None:
         self.reduction = reduction
@@ -23,8 +25,9 @@ class TransformerLoss(CrossEntropyLoss):
         mask = (target != self.ignore_index).to(input.device, dtype=torch.long)
         
         not_masked_length = mask.to(torch.int).sum()
-        input = input.permute(0, -1, -2) # switch T and V
-        _loss = super().forward(input, target)
+        #input = input.permute(0, -1, -2) # switch T and V
+        #_loss = super().forward(input, target)
+        _loss = better_loss(input, target)
         _loss *= mask.to(_loss.dtype)
         return _loss.sum() / not_masked_length
 

@@ -27,7 +27,7 @@ mt = MusicTransformer(
     max_seq=config.max_seq,
     dropout=0)
     
-mt.load_state_dict(torch.load(config.model_dir+'/train-15.pth'))
+mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
 mt.test()
 
 
