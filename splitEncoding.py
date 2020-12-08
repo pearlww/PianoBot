@@ -1,5 +1,6 @@
 
 import numpy as np
+import config
 
 #Returns an array of integer sequences [ [part1], [part2], ...]
 
@@ -15,7 +16,7 @@ START_IDX = {
     'velocity': RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT
 }
 
-vocab_size = RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_VEL + RANGE_TIME_SHIFT
+vocab_size = config.vocab_size
 
 #max_time in milliseconds
 def split_encoding(int_array, max_time):
@@ -72,7 +73,7 @@ def split_encoding(int_array, max_time):
 
 def one_hot_vector(note):
     vector = np.zeros(vocab_size)
-    vector[int(note)] = 1
+    vector[int(note)] = int(1)
     return vector
 
 def one_hot_sequence(int_array):

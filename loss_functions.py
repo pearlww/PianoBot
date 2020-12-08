@@ -26,8 +26,8 @@ class TransformerLoss(CrossEntropyLoss):
         
         not_masked_length = mask.to(torch.int).sum()
         #input = input.permute(0, -1, -2) # switch T and V
-        #_loss = super().forward(input, target)
-        _loss = better_loss(input, target)
+        _loss = super().forward(input, target)
+        #_loss = better_loss(input, target)
         _loss *= mask.to(_loss.dtype)
         return _loss.sum() / not_masked_length
 
