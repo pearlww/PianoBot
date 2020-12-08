@@ -25,13 +25,19 @@ class MusicTransformer(torch.nn.Module):
         self.dist = dist
         self.writer = writer
 
-        self.Encoder = layers.Encoder(
-            num_layers=self.num_layer, d_model=self.embedding_dim,
-            input_vocab_size=self.vocab_size, rate=dropout, max_len=max_seq)
+        self.Encoder = layers.Encoder(num_layers=self.num_layer, 
+                                      d_model=self.embedding_dim,
+                                      input_vocab_size=self.vocab_size, 
+                                      rate=dropout, 
+                                      max_len=max_seq
+                                      )
 
-        self.Decoder = layers.Decoder(
-            num_layers=self.num_layer, d_model=self.embedding_dim,
-            input_vocab_size=self.vocab_size, rate=dropout, max_len=max_seq+2)
+        self.Decoder = layers.Decoder(num_layers=self.num_layer, 
+                                      d_model=self.embedding_dim,
+                                      input_vocab_size=self.vocab_size, 
+                                      rate=dropout, 
+                                      max_len=max_seq+1
+                                      )
 
         self.fc = torch.nn.Linear(self.embedding_dim, self.vocab_size)
 
@@ -39,12 +45,12 @@ class MusicTransformer(torch.nn.Module):
         """
         Args:
             x: (batch_size, seq_len)
-            y: (batch_size, seq_len+2)
+            y: (batch_size, seq_len+1)
         Returns:
             output: (batch_size, seq_len, vocab_size)
         """
         if not self.infer:
-            src_mask, trg_mask, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x, y, config.pad_token)
+            src_mask, trg_mask, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq+1, x, y, config.pad_token)
             memory = self.Encoder(x, mask=src_mask)
             decoder = self.Decoder(y, memory, mask=look_ahead_mask)#|trg_mask) # shape: (batch_size, seq_len, embedding_dim)
 

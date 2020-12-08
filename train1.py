@@ -72,21 +72,24 @@ for e in range(config.epochs):
         # print(len(targets[0]))
 
         preds = model.forward(batch_x, target_inputs)
-        
+
         loss = criterion(preds, targets)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         train_summary_writer.add_scalar('loss', loss, global_step=idx)
 
-
         if b % 100 == 0:
             model.eval()
             eval_x, eval_y = dataset.batch(2, config.max_seq, 'eval')
             eval_x = torch.from_numpy(eval_x).contiguous().to(config.device, dtype=torch.int)
             eval_y = torch.from_numpy(eval_y).contiguous().to(config.device, dtype=torch.int)
-            eval_preds = model.forward(eval_x)
-            eval_loss = criterion(eval_preds, eval_y)
+
+            eval_target_inputs = eval_y[:, :-1]
+            eval_targets = eval_y[:, 1:]
+
+            eval_preds = model.forward(eval_x, eval_target_inputs)
+            eval_loss = criterion(eval_preds, eval_targets)
             torch.save(model.state_dict(), config.model_dir+'/train-{}.pth'.format(e))
 
             if b == 0:

@@ -185,7 +185,7 @@ class DecoderLayer(torch.nn.Module):
         self.dropout3 = torch.nn.Dropout(rate)
 
     def forward(self, x, encode_out, mask=None, lookup_mask=None, w_out=False, **kwargs):
-        print("Forwarding a decoder layer")
+        #print("Forwarding a decoder layer")
         attn_out, aw1 = self.rga([x, x, x], mask=lookup_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
@@ -193,7 +193,7 @@ class DecoderLayer(torch.nn.Module):
         if encode_out is None:
             attn_out2, aw2 = self.rga2([out1, out1, out1], mask=mask)
         else:
-            print("There is encode_out")
+            #print("There is encode_out")
             attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
@@ -240,6 +240,7 @@ class Encoder(torch.nn.Module):
             x = self.enc_layers[i](x, mask)
         return x
 
+
 class Decoder(torch.nn.Module):
     def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
         super(Decoder, self).__init__()
@@ -257,16 +258,13 @@ class Decoder(torch.nn.Module):
         self.dropout = torch.nn.Dropout(rate)
 
     def forward(self, x, encode_out, mask=None):
-        """
-        input x:  (batch_size, seq_len)
 
-        output: (batch_size, seq_len, embedding_dim)
-        """
         # adding embedding and position encoding.
         x = self.embedding(x.to(torch.long))  
         x *= math.sqrt(self.d_model)
         x = self.pos_encoding(x)
         x = self.dropout(x)
+
         for i in range(self.num_layers):
             x = self.dec_layers[i](x, encode_out, lookup_mask=mask)
         return x
