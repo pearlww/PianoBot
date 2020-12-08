@@ -36,6 +36,8 @@ class DynamicPositionEmbedding(torch.nn.Module):
         self.positional_embedding = embed_sinusoid_list
 
     def forward(self, x):
+        # print(x.shape)
+        # print(x.size(1))
         x = x + torch.from_numpy(self.positional_embedding[:, :x.size(1), :]).to(x.device, dtype=x.dtype)
         return x
 
@@ -97,6 +99,7 @@ class RelativeGlobalAttention(torch.nn.Module):
         logits = QKt + Srel
         logits = logits / math.sqrt(self.dh)
 
+        #print(mask)
         if mask is not None:
             logits += (mask.to(torch.int64) * -1e9).to(logits.dtype)
 
@@ -159,7 +162,7 @@ class EncoderLayer(torch.nn.Module):
         ffn_out = self.FFN_suf(ffn_out)
         ffn_out = self.dropout2(ffn_out)
         out2 = self.layernorm2(out1+ffn_out)
-        return out2, w
+        return out2
 
 
 class DecoderLayer(torch.nn.Module):
@@ -227,22 +230,42 @@ class Encoder(torch.nn.Module):
 
         output: (batch_size, seq_len, embedding_dim)
         """
-        weights = []
         # adding embedding and position encoding.
         x = self.embedding(x.to(torch.long))  
         x *= math.sqrt(self.d_model)
         x = self.pos_encoding(x)
         x = self.dropout(x)
         for i in range(self.num_layers):
-            x, w = self.enc_layers[i](x, mask)
-            weights.append(w)
-        return x, weights 
+            x = self.enc_layers[i](x, mask)
+        return x
 
+class Decoder(torch.nn.Module):
+    def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
+        super(Decoder, self).__init__()
 
-# class MusicTransformerDataParallelCriterion(torch.nn.DataParallel):
-#     def forward(self, inputs, *targets, **kwargs):
-#         targets, kwargs = self.scatter(targets, kwargs, self.device_ids)
-#         replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
-#         targets = tuple(targets_per_gpu[0] for targets_per_gpu in targets)
-#         outputs = _criterion_parallel_apply(replicas, inputs, targets, kwargs)
-#         return Reduce.apply(*outputs) / len(outputs), targets
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
+        if True:
+            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+
+        self.dec_layers = torch.nn.ModuleList(
+            [DecoderLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
+             for _ in range(num_layers)])
+        self.dropout = torch.nn.Dropout(rate)
+
+    def forward(self, x, encode_out, mask=None):
+        """
+        input x:  (batch_size, seq_len)
+
+        output: (batch_size, seq_len, embedding_dim)
+        """
+        # adding embedding and position encoding.
+        x = self.embedding(x.to(torch.long))  
+        x *= math.sqrt(self.d_model)
+        x = self.pos_encoding(x)
+        x = self.dropout(x)
+        for i in range(self.num_layers):
+            x = self.dec_layers[i](x, encode_out, lookup_mask=mask)
+        return x

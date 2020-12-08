@@ -40,18 +40,17 @@ def get_masked_with_pad_tensor(size, src, trg, pad_token):
     src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
     trg = trg[:, None, None, :]
     src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
-    src_mask = torch.equal(src, src_pad_tensor)
-    trg_mask = torch.equal(src, src_pad_tensor)
-    if trg is not None:
-        trg_pad_tensor = torch.ones_like(trg).to(trg.device.type) * pad_token
-        dec_trg_mask = trg == trg_pad_tensor
-        # boolean reversing i.e) True * -1 + 1 = False
-        seq_mask = ~sequence_mask(torch.arange(1, size+1).to(trg.device), size)
-        # look_ahead_mask = torch.max(dec_trg_mask, seq_mask)
-        look_ahead_mask = dec_trg_mask | seq_mask
+    src_mask = src == src_pad_tensor
 
-    else:
-        trg_mask = None
-        look_ahead_mask = None
+    trg_pad_tensor = torch.ones_like(trg).to(trg.device.type) * pad_token
+    trg_mask = trg == trg_pad_tensor
+    
+    # boolean reversing i.e) True * -1 + 1 = False
+    seq_mask = ~sequence_mask(torch.arange(1, size+3).to(trg.device), size+2)
+    # look_ahead_mask = torch.max(dec_trg_mask, seq_mask)
+    look_ahead_mask = trg_mask | seq_mask
 
+    # print(torch.tensor(src_mask))
+    # print(torch.tensor(trg_mask))
+    #print(torch.tensor(look_ahead_mask))
     return src_mask, trg_mask, look_ahead_mask

@@ -27,28 +27,29 @@ mt = MusicTransformer(
     max_seq=config.max_seq,
     dropout=0)
     
-mt.load_state_dict(torch.load(config.model_dir+'/train-15.pth'))
+mt.load_state_dict(torch.load(config.model_dir+'/final2.pth'))
 mt.test()
 
 
-inputs = np.array([encode_midi(config.input_midi)[:500]])
+inputs = np.array([encode_midi(config.input_midi)[:128]])
 print("inputs:", inputs)
-targets = np.array([encode_midi(config.target_midi)[:500]])
+targets = np.array([encode_midi(config.target_midi)[:128]])
 print("targets:", targets)
 
 
-# inputs = torch.from_numpy(inputs)
-# result = mt(inputs, config.length, gen_summary_writer)
-#print("outputs", result)
-# def remove_padding(result):
-#     ret = []
-#     for c in result:
-#         if c!=388:
-#             ret.append(c)
-#     return ret
+inputs = torch.from_numpy(inputs)
+result = mt(inputs, config.length, gen_summary_writer)
+print("outputs", result)
 
-# result = remove_padding(result)
-#print("outputs without pad:", result)
+def remove_padding(result):
+    ret = []
+    for c in result:
+        if c!=388:
+            ret.append(c)
+    return ret
+
+result = remove_padding(result)
+print("outputs without pad:", result)
 
 # decode_midi(result, file_path=config.save_path)
 

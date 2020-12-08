@@ -1,5 +1,6 @@
 
 import numpy as np
+import config
 
 #Returns an array of integer sequences [ [part1], [part2], ...]
 
@@ -15,7 +16,7 @@ START_IDX = {
     'velocity': RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_TIME_SHIFT
 }
 
-vocab_size = RANGE_NOTE_ON + RANGE_NOTE_OFF + RANGE_VEL + RANGE_TIME_SHIFT
+vocab_size = config.vocab_size
 
 #max_time in milliseconds
 def split_encoding(int_array, max_time):
@@ -72,7 +73,7 @@ def split_encoding(int_array, max_time):
 
 def one_hot_vector(note):
     vector = np.zeros(vocab_size)
-    vector[int(note)] = 1
+    vector[int(note)] = int(1)
     return vector
 
 def one_hot_sequence(int_array):
@@ -84,7 +85,11 @@ def one_hot_sequence(int_array):
 
 #Will return the sequences X and Y correctly cut or padded, according to
 #the maximum number of integers that we want
-def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
+def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048, sp_tokens=True):
+    #seqX.insert(0, config.token_sos)
+    #seqY.insert(0, config.token_sos)
+    #seqX.append(config.token_eos)
+    #seqY.append(config.token_eos)
     longestSeq = None
     shortestSeq = None
     x_longest = True
@@ -98,7 +103,7 @@ def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
         shortestSeq = seqX
         x_longest = False
         
-    if len(longestSeq) > maxint:
+    if len(longestSeq) >= maxint:
         longestSeq = longestSeq[0:maxint]
         #We have to calculate how much does the sequence with maxint ints lasts
         shortest_time = calculate_time(longestSeq)
@@ -120,7 +125,18 @@ def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
         
         slow_sequence = cut_time(slow_sequence, shortest_time)
         #print("Slow sequence cutted legnth: " + str(len(slow_sequence)))
-        slow_sequence = pad_sequence(slow_sequence, pad_token, maxint)
+        if sp_tokens:
+            slow_sequence = pad_sequence(slow_sequence, pad_token, maxint)
+        else:
+            slow_sequence = pad_sequence(slow_sequence, pad_token, maxint)
+        
+        if sp_tokens:
+            if x_longest:
+                slow_sequence.insert(0, config.token_sos)
+                slow_sequence = add_eos(slow_sequence)
+            else:
+                longestSeq.insert(0, config.token_sos)
+                longestSeq = add_eos(longestSeq)
         
         if x_longest:
             return longestSeq, slow_sequence
@@ -129,7 +145,11 @@ def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048):
         
     else:
         x = pad_sequence(seqX, pad_token, maxint)
-        y = pad_sequence(seqY, pad_token, maxint)
+        if sp_tokens:
+            y = pad_sequence(seqY, pad_token, maxint, add_eos=True)
+            seqY.insert(0, config.token_sos)
+        else:
+            y = pad_sequence(seqY, pad_token, maxint)
         return x, y
 
 #Calculates and returns how many timesteps are in the given sequence
@@ -159,9 +179,28 @@ def cut_time(seq, maxtime):
                 return ret
     return seq
 
+def cut_int(seq, maxint):
+    ret = seq[0:(maxint-1)]
+    ret.append(config.token_eos)
+    return ret
+
 #Input: a shorter sequence than maxint.
 #Return: a maxint sequence padded with the given token
-def pad_sequence(seq, pad_token, maxint=2048):
-    for i in range(maxint-len(seq)):
-        seq.append(pad_token)
+def pad_sequence(seq, pad_token, maxint=2048, add_eos=False):
+    if (len(seq) == maxint) and add_eos:
+        return cut_int(seq, maxint)
+    if add_eos:
+        seq.append(config.token_eos)
+        for i in range(maxint-len(seq)+1):
+            seq.append(pad_token)
+    else:
+        for i in range(maxint-len(seq)):
+            seq.append(pad_token)
+    return seq
+
+def add_eos(seq):
+    i = len(seq)
+    while i> 0 and seq[i-1] == 388:
+        i = i - 1
+    seq.insert(i, config.token_eos)
     return seq
