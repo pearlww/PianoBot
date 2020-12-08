@@ -1,88 +1,70 @@
-import config
-import layers
-
-import sys
 import torch
-import torch.distributions as dist
-import random
-import utils
+from torch import Tensor
+from torch import nn
+import math
 
-import torch
-from tensorboardX import SummaryWriter
-from progress.bar import Bar
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        self.d_model = d_model
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
 
-class MusicTransformer(torch.nn.Module):
-    def __init__(self, embedding_dim, vocab_size, num_layer,
-                 max_seq, dropout, dist=False, writer=None):
-        super().__init__()
-        
-        self.infer = False
+    def forward(self, x):
+        x = x * math.sqrt(self.d_model)
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
 
-        self.max_seq = max_seq
-        self.num_layer = num_layer
-        self.embedding_dim = embedding_dim
-        self.vocab_size = vocab_size
+    
+class VanillaTransformer(nn.Module):
+    def __init__(self, d_model: int = 512, nhead: int = 8, num_encoder_layers: int = 6,
+                 num_decoder_layers: int = 6, dim_feedforward: int = 2048, dropout: float = 0.1,
+                 activation: str = "relu",source_vocab_length: int = 60000,target_vocab_length: int = 60000) -> None:
 
-        self.dist = dist
-        self.writer = writer
+        super(VanillaTransformer, self).__init__()
+        self.source_embedding = nn.Embedding(source_vocab_length, d_model)
+        self.pos_encoder = PositionalEncoding(d_model)
+        encoder_layer = nn.TransformerEncoderLayer(d_model, nhead, dim_feedforward, dropout, activation)
+        encoder_norm = nn.LayerNorm(d_model)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
-        self.Decoder = layers.Encoder(
-            num_layers=self.num_layer, d_model=self.embedding_dim,
-            input_vocab_size=self.vocab_size, rate=dropout, max_len=max_seq)
-        self.fc = torch.nn.Linear(self.embedding_dim, self.vocab_size)
+        self.target_embedding = nn.Embedding(target_vocab_length, d_model)
+        decoder_layer = nn.TransformerDecoderLayer(d_model, nhead, dim_feedforward, dropout, activation)
+        decoder_norm = nn.LayerNorm(d_model)
+        self.decoder = nn.TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm)
+        self.out = nn.Linear(512, target_vocab_length)
+        self._reset_parameters()
+        self.d_model = d_model
+        self.nhead = nhead
 
-    def forward(self, x, length=None, writer=None):
-        """
-        Args:
-            x:  (batch_size, seq_len)
-        Returns:
-            output: (batch_size, seq_len, vocab_size)
-        """
-        if not self.infer:
-            _, _, look_ahead_mask = utils.get_masked_with_pad_tensor(self.max_seq, x, x, config.pad_token)
-            decoder, w = self.Decoder(x, mask=look_ahead_mask) # shape: (batch_size, seq_len, embedding_dim)
-            fc = self.fc(decoder) # shape: (batch_size, seq_len, vocab_size)
-            return fc.contiguous()
-        else:
-            return self.generate(x, length, None).contiguous().tolist()
 
-    def generate(self,
-                 prior: torch.Tensor,
-                 length=2048,
-                 tf_board_writer: SummaryWriter = None):
-        decode_array = prior
-        result_array = prior
-        print(config)
-        print(length)
-        for i in Bar('generating').iter(range(length)):
-            if decode_array.size(1) >= config.threshold_len:
-                decode_array = decode_array[:, 1:]
-            _, _, look_ahead_mask = \
-                utils.get_masked_with_pad_tensor(decode_array.size(1), decode_array, decode_array, pad_token=config.pad_token)
+    def forward(self, src: Tensor, tgt: Tensor, src_mask= None, tgt_mask = None,
+                memory_mask = None, src_key_padding_mask = None,
+                tgt_key_padding_mask = None, memory_key_padding_mask= None) -> Tensor:
 
-            # result, _ = self.forward(decode_array, lookup_mask=look_ahead_mask)
-            # result, _ = decode_fn(decode_array, look_ahead_mask)
-            result, _ = self.Decoder(decode_array, None)
-            result = self.fc(result)
-            result = result.softmax(-1)
+        if src.shape[0] != tgt.shape[0]:
+            raise RuntimeError("the batch number of src and tgt must be equal")
+        src = self.source_embedding(src)
+        src = self.pos_encoder(src)
+        memory = self.encoder(src, mask=src_mask, src_key_padding_mask=src_key_padding_mask)
 
-            if tf_board_writer:
-                tf_board_writer.add_image("logits", result, global_step=i)
+        tgt = self.target_embedding(tgt)
+        tgt = self.pos_encoder(tgt)
+        output = self.decoder(tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask,
+                              tgt_key_padding_mask=tgt_key_padding_mask,
+                              memory_key_padding_mask=memory_key_padding_mask)
+        output = self.out(output)
+        return output
 
-            u = 0
-            if u > 1:
-                result = result[:, -1].argmax(-1).to(decode_array.dtype)
-                decode_array = torch.cat((decode_array, result.unsqueeze(-1)), -1)
-            else:
-                pdf = dist.OneHotCategorical(probs=result[:, -1])
-                result = pdf.sample().argmax(-1).unsqueeze(-1)
-                # result = torch.transpose(result, 1, 0).to(torch.int32)
-                decode_array = torch.cat((decode_array, result), dim=-1)
-                result_array = torch.cat((result_array, result), dim=-1)
-            del look_ahead_mask
-        result_array = result_array[0]
-        return result_array
 
-    def test(self):
-        self.eval()
-        self.infer = True
+    def _reset_parameters(self):
+        r"""Initiate parameters in the transformer model."""
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
