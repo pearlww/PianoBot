@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.nn.modules.loss import CrossEntropyLoss, _Loss
 import config
 
+from more_loss_functions import better_loss
+
 class TransformerLoss(CrossEntropyLoss):
     def __init__(self, ignore_index=config.pad_token, reduction='mean') -> None:
         self.reduction = reduction

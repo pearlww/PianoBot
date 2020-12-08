@@ -2,22 +2,32 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class LSTM(nn.Module):
+hidden_size = 70 #Default was 50
+
+import config
+
+class MusicLSTM(nn.Module):
     def __init__(self):
-        super(MyRecurrentNet, self).__init__()
+        super(MusicLSTM, self).__init__()
         
         # Recurrent layer
-        self.lstm = nn.LSTM(input_size=vocab_size,
-                         hidden_size=50,
+        # YOUR CODE HERE!
+        self.lstm = nn.LSTM(input_size=int(config.vocab_size),
+                         hidden_size=hidden_size,
                          num_layers=1,
-                         bidirectional=False)
+                         bidirectional=True)
+        
         # Output layer
-        self.l_out = nn.Linear(in_features=50,
-                            out_features=vocab_size,
+        self.l_out = nn.Linear(in_features=hidden_size,
+                            out_features=config.vocab_size,
                             bias=False)
         
+        #self.embedding = torch.nn.Embedding(num_embeddings=config.vocab_size, embedding_dim=config.embedding_dim)
+        
     def forward(self, x):
+        #x = self.embedding(x.to(torch.long))
         # RNN returns output and last hidden state
+        print("x: " + str(x))
         x, (h, c) = self.lstm(x)
         
         # Flatten output for feed-forward layer
@@ -28,5 +38,5 @@ class LSTM(nn.Module):
         
         return x
 
-net = MyRecurrentNet()
-print(net)
+net = MusicLSTM()
+print(net) 

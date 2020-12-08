@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     path = './encoded/'
     dataset = DataLoader( path+'high', path+'low')
-    batch_x, batch_y = dataset.batch(1, 2048) #, path="MIDI-Unprocessed_01_R1_2009_01-04_ORIG_MID--AUDIO_01_R1_2009_01_R1_2009_01_WAV.midi.pickle")
+    batch_x, batch_y = dataset.batch(4, 128) #, path="MIDI-Unprocessed_01_R1_2009_01-04_ORIG_MID--AUDIO_01_R1_2009_01_R1_2009_01_WAV.midi.pickle")
     
     print("Size of batch x: " + str(len(batch_x)))
     print("Size of batch y: " + str(len(batch_y)))
