@@ -68,7 +68,7 @@ class MusicTransformer(torch.nn.Module):
 
             src_mask, trg_mask = utils.get_mask(len(result_array), high_input, result_array, pad_token=config.pad_token)
 
-            result, _ = self.Decoder(result_array, memory, src_mask, tgt_mask)
+            result, _ = self.Decoder(result_array, memory, src_mask, trg_mask)
             result = self.fc(result)
             result = result.softmax(-1)
 

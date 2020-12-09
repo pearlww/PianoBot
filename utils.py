@@ -43,9 +43,10 @@ def get_mask(size, src, trg, pad_token):
     src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
     src_mask = src == src_pad_tensor
 
+    trg = trg[:, None, None, :]
     trg_pad_tensor = torch.ones_like(trg).to(trg.device.type) * pad_token
     trg_mask = trg == trg_pad_tensor
-    trg = trg[:, None, None, :]
+
     # boolean reversing i.e) True * -1 + 1 = False
     seq_mask = ~sequence_mask(torch.arange(1, size+1).to(trg.device), size)
     # look_ahead_mask = torch.max(dec_trg_mask, seq_mask)

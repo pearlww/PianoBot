@@ -19,7 +19,7 @@ label_smooth = 0.1
 experiment = 'embedding256-layer6'
 max_seq = 128
 embedding_dim = 256 #512
-num_layers = 2
+num_layers = 1
 event_dim = 388
 
 
