@@ -1,6 +1,7 @@
 from layers import *
 import config
-from transformer import MusicTransformer
+
+from music_transformer import MusicTransformer
 from data_loader import DataLoader
 import utils
 from processor import decode_midi, encode_midi
@@ -15,10 +16,10 @@ if torch.cuda.is_available():
 else:
     config.device = torch.device('cpu')
 
-
 current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 gen_log_dir = 'logs/mt_decoder/generate_'+current_time+'/generate'
 gen_summary_writer = SummaryWriter(gen_log_dir)
+
 
 mt = MusicTransformer(
     embedding_dim=config.embedding_dim,
@@ -26,19 +27,19 @@ mt = MusicTransformer(
     num_layer=config.num_layers,
     max_seq=config.max_seq,
     dropout=0)
-    
-mt.load_state_dict(torch.load(config.model_dir+'/final2.pth'))
-mt.test()
 
+  
+mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
+mt.eval()
 
 inputs = np.array([encode_midi(config.input_midi)[:128]])
-print("inputs:", inputs)
+#print("inputs:", inputs)
 targets = np.array([encode_midi(config.target_midi)[:128]])
-print("targets:", targets)
+#print("targets:", targets)
 
 
 inputs = torch.from_numpy(inputs)
-result = mt(inputs, config.length, gen_summary_writer)
+result = mt.generate(inputs, config.length, gen_summary_writer)
 print("outputs", result)
 
 def remove_padding(result):

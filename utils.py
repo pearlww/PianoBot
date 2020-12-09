@@ -28,29 +28,27 @@ def sequence_mask(length, max_length=None):
     return x.unsqueeze(0) < length.unsqueeze(1)
 
 
-def get_masked_with_pad_tensor(size, src, trg, pad_token):
+def get_mask(size, src, trg, pad_token):
     """
     :param size: the size of target input
-    :param src: source tensor　：　(batch_size, seq_length)
+    :param src: source tensor
     :param trg: target tensor
     :param pad_token: pad token
-    :return:
+
+    :return: src_mask hide padding
+             target_mask hide padding and future words
     """
 
     src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
-    trg = trg[:, None, None, :]
     src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
     src_mask = src == src_pad_tensor
 
     trg_pad_tensor = torch.ones_like(trg).to(trg.device.type) * pad_token
     trg_mask = trg == trg_pad_tensor
-    
+    trg = trg[:, None, None, :]
     # boolean reversing i.e) True * -1 + 1 = False
     seq_mask = ~sequence_mask(torch.arange(1, size+1).to(trg.device), size)
     # look_ahead_mask = torch.max(dec_trg_mask, seq_mask)
-    look_ahead_mask = trg_mask | seq_mask
+    trg_mask  = trg_mask | seq_mask
 
-    # print(torch.tensor(src_mask))
-    # print(torch.tensor(trg_mask))
-    #print(torch.tensor(look_ahead_mask))
-    return src_mask, trg_mask, look_ahead_mask
+    return src_mask, trg_mask

@@ -96,6 +96,8 @@ class RelativeGlobalAttention(torch.nn.Module):
 
         Kt = k.permute(0, 1, 3, 2)
         QKt = torch.matmul(q, Kt)
+        # print(QKt.shape)
+        # print(Srel.shape)
         logits = QKt + Srel
         logits = logits / math.sqrt(self.dh)
 
@@ -184,17 +186,17 @@ class DecoderLayer(torch.nn.Module):
         self.dropout2 = torch.nn.Dropout(rate)
         self.dropout3 = torch.nn.Dropout(rate)
 
-    def forward(self, x, encode_out, mask=None, lookup_mask=None, w_out=False, **kwargs):
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, w_out=False, **kwargs):
         #print("Forwarding a decoder layer")
-        attn_out, aw1 = self.rga([x, x, x], mask=lookup_mask)
+        attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
         if encode_out is None:
-            attn_out2, aw2 = self.rga2([out1, out1, out1], mask=mask)
+            attn_out2, aw2 = self.rga2([out1, out1, out1], mask=src_mask)
         else:
             #print("There is encode_out")
-            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=mask)
+            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
 
@@ -257,7 +259,7 @@ class Decoder(torch.nn.Module):
              for _ in range(num_layers)])
         self.dropout = torch.nn.Dropout(rate)
 
-    def forward(self, x, encode_out, mask=None):
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None):
 
         # adding embedding and position encoding.
         x = self.embedding(x.to(torch.long))  
@@ -266,5 +268,5 @@ class Decoder(torch.nn.Module):
         x = self.dropout(x)
 
         for i in range(self.num_layers):
-            x = self.dec_layers[i](x, encode_out, lookup_mask=mask)
+            x = self.dec_layers[i](x, encode_out, src_mask, tgt_mask)
         return x
