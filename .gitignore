@@ -1,2 +1,2 @@
 /logs
-/train
+/train/*.pth
