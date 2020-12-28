@@ -39,6 +39,7 @@ targets = np.array([encode_midi(config.target_midi)[:128]])
 
 
 inputs = torch.from_numpy(inputs)
+print("Before generation, shape: ", inputs.shape)
 result = mt.generate(inputs, config.length, gen_summary_writer)
 print("outputs", result)
 

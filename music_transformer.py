@@ -10,6 +10,8 @@ import utils
 from tensorboardX import SummaryWriter
 from progress.bar import Bar
 
+from splitEncoding import pad_sequence
+
 class MusicTransformer(torch.nn.Module):
     def __init__(self, embedding_dim, vocab_size, num_layer,
                  max_seq, dropout, dist=False, writer=None):
@@ -59,16 +61,25 @@ class MusicTransformer(torch.nn.Module):
                  high_input: torch.Tensor,
                  length,
                  tf_board_writer: SummaryWriter = None):
-        result_array = torch.tensor([[config.token_sos]])
-        memory = self.Encoder(high_input)
+
+        #result_array = torch.tensor([[config.token_sos]])
+        #Max: I don't vibe with variable lengths. But I do vibe with padding :)
+        result_array = pad_sequence([config.token_sos], config.pad_token, maxint=self.max_seq+1)
+        result_array = torch.tensor([result_array])
+        print(result_array)
+        #I really think here we should put the source mask. Why not?
+        #Let's try
+        src_mask = utils.get_src_mask(self.max_seq+1, high_input, config.pad_token)
+        memory = self.Encoder(high_input, mask=src_mask)
 
         for i in Bar('generating').iter(range(length)):
-            if len(result_array) >= config.threshold_len:
-                result_array = result_array[:, 1:]
+            if len(result_array) >= config.threshold_len+1:
+                result_array = result_array[:,1:]
 
-            src_mask, trg_mask = utils.get_mask(len(result_array), high_input, result_array, pad_token=config.pad_token)
+            #Why len(result_array) and not self.max_seq+1? Because it makes sense.
+            src_mask, trg_mask = utils.get_mask(self.max_seq+1, high_input, result_array, pad_token=config.pad_token)
 
-            result, _ = self.Decoder(result_array, memory, src_mask, trg_mask)
+            result = self.Decoder(result_array, memory, src_mask, trg_mask)
             result = self.fc(result)
             result = result.softmax(-1)
 
@@ -78,7 +89,12 @@ class MusicTransformer(torch.nn.Module):
             pdf = dist.OneHotCategorical(probs=result[:, -1])
             result = pdf.sample().argmax(-1).unsqueeze(-1)
 
-            result_array = torch.cat((result_array, result), dim=-1)
+            #result_array = torch.cat((result_array, result), dim=-1)
+            #Instead of appending, substitute a padding
+            if (i+1)==len(result_array[-1]):
+                result_array = torch.cat((result_array, result), dim=-1)
+            else:
+                result_array[-1][i+1]=result
 
         result_array = result_array[0].contiguous().tolist()
         return result_array

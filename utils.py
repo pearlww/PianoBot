@@ -35,8 +35,8 @@ def get_mask(size, src, trg, pad_token):
     :param trg: target tensor
     :param pad_token: pad token
 
-    :return: src_mask hide padding
-             target_mask hide padding and future words
+    :return: src_mask hides padding
+             target_mask hides padding and future words
     """
 
     src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
@@ -53,3 +53,19 @@ def get_mask(size, src, trg, pad_token):
     trg_mask  = trg_mask | seq_mask
 
     return src_mask, trg_mask
+
+def get_src_mask(size, src, pad_token):
+    #Max: First three lines of get_mask    
+    src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
+    src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
+    src_mask = src == src_pad_tensor
+    return src_mask
+
+if __name__ == '__main__':
+
+    s = np.array([np.array([1, 2]*50),np.array([1, 2, 3, 4]*25)])
+
+    t = np.array([np.array([2, 3, 4, 5, 6]*20), np.array([1, 2, 3, 4, 5]*20)])
+    print(t.shape)
+
+    print(get_mask(100, s, t, pad))

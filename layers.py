@@ -72,7 +72,6 @@ class RelativeGlobalAttention(torch.nn.Module):
         :return: final tensor ( output of attention )
         """
         q = inputs[0]
-        print("q", q.shape)
         q = self.Wq(q)
         q = torch.reshape(q, (q.size(0), q.size(1), self.h, -1))
         q = q.permute(0, 2, 1, 3)  # batch, h, seq, dh
@@ -93,12 +92,11 @@ class RelativeGlobalAttention(torch.nn.Module):
         E = self._get_left_embedding(self.len_q, self.len_k).to(q.device)
         QE = torch.einsum('bhld,md->bhlm', [q, E])
         QE = self._qe_masking(QE)
+
         Srel = self._skewing(QE)
 
         Kt = k.permute(0, 1, 3, 2)
         QKt = torch.matmul(q, Kt)
-        print("QKt:", QKt.shape)
-        print("Srel:", Srel.shape)
         logits = QKt + Srel
         logits = logits / math.sqrt(self.dh)
 

@@ -8,7 +8,7 @@ pickle_dir = './encoded/'
 device = torch.device('cpu')
 
 epochs = 100 # 100 for debug
-batch_size = 16 # 2 for debag
+batch_size = 1 # 2 for debag
 dropout = 0.1
 debug = 'true'
 l_r = 0.0001
@@ -19,7 +19,7 @@ label_smooth = 0.1
 experiment = 'embedding256-layer6'
 max_seq = 128
 embedding_dim = 256 #512
-num_layers = 1
+num_layers = 2
 event_dim = 388
 
 
