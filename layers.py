@@ -217,7 +217,7 @@ class Encoder(torch.nn.Module):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
         if True:
             self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
@@ -249,7 +249,7 @@ class Decoder(torch.nn.Module):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
         if True:
             self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
