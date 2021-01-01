@@ -152,6 +152,32 @@ def crop_pad_sequences(seqX, seqY, pad_token, maxint=2048, sp_tokens=True):
             y = pad_sequence(seqY, pad_token, maxint)
         return x, y
 
+
+r"""
+Gets the xpos-th chunk of maxint length of x, gets the corresponding part of y,
+and then cuts both as needed so that both have at max the maxint length.
+Returns without padding.
+"""
+def get_sequences(x, y, maxint, xpos):
+    xpos = maxint*xpos
+    seqX = x[xpos:xpos+maxint]
+    timeX = calculate_time(seqX)
+    seqY = y
+    #If the sequence is not the first one, we have to find where does the sequence
+    #start in y
+    if xpos > 0:
+        prevX = x[0:xpos]
+        prevTime = calculate_time(prevX)
+        seqY = after_time_sequence(y, prevTime)
+    
+    seqY, timeY = cut_time_length(seqY, timeX, maxint)
+    if timeY < timeX:
+        #We have to cut x to the time of Y
+        seqX = cut_time(seqX, timeY)
+        
+    return seqX, seqY
+        
+
 #Calculates and returns how many timesteps are in the given sequence
 def calculate_time(longSeq):
     longSeq_time = 0
@@ -175,10 +201,59 @@ def cut_time(seq, maxtime):
                 #This last shift overlaps the splitting point
                 finish_time = shift - (time - maxtime)
                 ret = seq[0:i]
-                ret.append(finish_time)
+                ret.append(finish_time + START_IDX['time_shift'])
                 return ret
     return seq
 
+#Returns the sequence cut at the minimum between the specified time and the maximum length.
+#Also returns the time that the returned sequence has
+def cut_time_length(seq, maxtime, maxlength):
+    if len(seq) <= maxlength:
+        time = calculate_time(seq)
+        return seq, time
+    else:
+        time=0
+        finish_time=0
+        i=0
+        while (i < maxlength) and (time < maxtime):
+            event = seq[i]
+            if (event >= START_IDX['time_shift']) and (event < START_IDX['velocity']):
+                #Time event
+                shift = event - START_IDX['time_shift']
+                time += shift #Increment time
+                if time >= maxtime:
+                    #This last shift overlaps the splitting point
+                    finish_time = shift - (time - maxtime)
+                    seq = seq[0:i]
+                    seq.append(finish_time + START_IDX['time_shift'])
+            i+=1
+            
+        if i == maxlength:
+            seq = seq[0:maxlength]
+        return seq, time
+
+#Returns the subsequence that starts at the given time. It will modify the first time step to match exactly the time.
+#It can return an empty list if the given time is larger than the time of the sequence.
+def after_time_sequence(seq, maxtime):
+    i=0
+    time=0
+    while (i < len(seq)) and (time < maxtime):
+        event = seq[i]
+        if (event >= START_IDX['time_shift']) and (event < START_IDX['velocity']):
+            #Time event
+            shift = event - START_IDX['time_shift']
+            time += shift #Increment time
+            if time >= maxtime:
+                #This last shift overlaps the starting point
+                start_time = time - maxtime #The excess of maxtime
+                ret = seq[i:]
+                ret[0] = start_time + START_IDX['time_shift']
+                return ret
+        i+=1
+
+    return []
+
+#Cuts the sequence at maxint-1 and adds the end of sequence token
 def cut_int(seq, maxint):
     ret = seq[0:(maxint-1)]
     ret.append(config.token_eos)
@@ -187,8 +262,6 @@ def cut_int(seq, maxint):
 #Input: a shorter sequence than maxint.
 #Return: a maxint sequence padded with the given token
 def pad_sequence(seq, pad_token, maxint=2048, add_eos=False):
-    if (len(seq) == maxint) and add_eos:
-        return cut_int(seq, maxint)
     if add_eos:
         seq.append(config.token_eos)
         for i in range(maxint-len(seq)+1):
@@ -198,9 +271,21 @@ def pad_sequence(seq, pad_token, maxint=2048, add_eos=False):
             seq.append(pad_token)
     return seq
 
+#Adds the eos token where it's needed in a padded sequence. The resulting array
+#has one more item
 def add_eos(seq):
     i = len(seq)
     while i> 0 and seq[i-1] == 388:
         i = i - 1
     seq.insert(i, config.token_eos)
     return seq
+
+
+r""" Splits lst in chunks of size length and returns them in a list. If the last
+chunk has less than min_length, it is ommited.
+"""
+def split_even_list(lst, size, min_length):
+    array = [lst[i:min(len(lst), i+size)] for i in range(0, len(lst), size)]
+    if len(array[-1]) < min_length:
+        array.pop()
+    return array
