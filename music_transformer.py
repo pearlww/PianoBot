@@ -66,7 +66,8 @@ class MusicTransformer(torch.nn.Module):
         #Max: I don't vibe with variable lengths. But I do vibe with padding :)
         result_array = pad_sequence([config.token_sos], config.pad_token, maxint=self.max_seq+1)
         result_array = torch.tensor([result_array])
-        print(result_array)
+        #print(result_array)
+
         #I really think here we should put the source mask. Why not?
         #Let's try
         src_mask = utils.get_src_mask(self.max_seq+1, high_input, config.pad_token)

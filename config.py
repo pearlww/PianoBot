@@ -16,7 +16,7 @@ label_smooth = 0.1
 
 
 # model
-experiment = 'embedding256-layer6'
+experiment = 'embedding256-layer2'
 max_seq = 128
 embedding_dim = 256 #512
 num_layers = 2

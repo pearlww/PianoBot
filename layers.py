@@ -185,17 +185,14 @@ class DecoderLayer(torch.nn.Module):
         self.dropout2 = torch.nn.Dropout(rate)
         self.dropout3 = torch.nn.Dropout(rate)
 
-    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, w_out=False, **kwargs):
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, **kwargs):
         #print("Forwarding a decoder layer")
         attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
-        if encode_out is None:
-            attn_out2, aw2 = self.rga2([out1, out1, out1], mask=src_mask)
-        else:
-            #print("There is encode_out")
-            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
+
+        attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
 
@@ -204,10 +201,7 @@ class DecoderLayer(torch.nn.Module):
         ffn_out = self.dropout3(ffn_out)
         out = self.layernorm3(attn_out2+ffn_out)
 
-        if w_out:
-            return out, aw1, aw2
-        else:
-            return out
+        return out
 
 
 class Encoder(torch.nn.Module):
@@ -218,8 +212,7 @@ class Encoder(torch.nn.Module):
         self.num_layers = num_layers
 
         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.enc_layers = torch.nn.ModuleList(
             [EncoderLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
@@ -250,8 +243,7 @@ class Decoder(torch.nn.Module):
         self.num_layers = num_layers
 
         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.dec_layers = torch.nn.ModuleList(
             [DecoderLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
