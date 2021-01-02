@@ -2,7 +2,7 @@ import utils
 import random
 import pickle
 import numpy as np
-from splitEncoding import split_encoding, crop_pad_sequences, get_sequences, pad_sequence
+from splitEncoding import split_encoding, crop_pad_sequences, get_sequences, pad_sequence, check_validity, remove_velocity
 from processor import decode_midi
 import config
 
@@ -147,6 +147,10 @@ class DataLoader:
         
         #Else we've got the sequences, but without padding
         #PAD
+        
+        seqX = remove_velocity(seqX)
+        seqY = remove_velocity(seqY)
+        
         seqX = pad_sequence(seqX, pad_token, max_length, add_eos=False)
         seqY = pad_sequence(seqY, pad_token, max_length, add_eos=True)
         seqY.insert(0, config.token_sos)
@@ -188,6 +192,12 @@ if __name__ == '__main__':
     dataset = DataLoader( path+'high', path+'low')
     batch_x, batch_y = dataset.batch(4, 128)#, path="MIDI-Unprocessed_17_R2_2011_MID--AUDIO_R2-D5_03_Track03_wav.midi.pickle")
     
+    for seq in batch_x:
+        check_validity(seq)
+        
+    for seq in batch_y:
+        check_validity(seq)
+        
     print("Size of batch x: " + str(len(batch_x)))
     print("Size of batch y: " + str(len(batch_y)))
     print("Batch x:")
