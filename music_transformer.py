@@ -49,7 +49,8 @@ class MusicTransformer(torch.nn.Module):
         Returns:
             output: (batch_size, seq_len, vocab_size)
         """
-        src_mask, trg_mask  = utils.get_mask(self.max_seq+1, x, y, config.pad_token)
+        src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
+        # src_mask, trg_mask  = utils.get_3d_mask(self.max_seq+1, x, y, config.pad_token)
         memory = self.Encoder(x, mask=src_mask)
         decoder = self.Decoder(y, memory, src_mask, trg_mask)
 
@@ -71,6 +72,7 @@ class MusicTransformer(torch.nn.Module):
         #I really think here we should put the source mask. Why not?
         #Let's try
         src_mask = utils.get_src_mask(self.max_seq+1, high_input, config.pad_token)
+        #print(src_mask)
         memory = self.Encoder(high_input, mask=src_mask)
 
         for i in Bar('generating').iter(range(length)):
@@ -78,7 +80,7 @@ class MusicTransformer(torch.nn.Module):
                 result_array = result_array[:,1:]
 
             #Why len(result_array) and not self.max_seq+1? Because it makes sense.
-            src_mask, trg_mask = utils.get_mask(self.max_seq+1, high_input, result_array, pad_token=config.pad_token)
+            src_mask, trg_mask = utils.get_4d_mask(self.max_seq+1, high_input, result_array, pad_token=config.pad_token)
 
             result = self.Decoder(result_array, memory, src_mask, trg_mask)
             result = self.fc(result)
@@ -97,6 +99,6 @@ class MusicTransformer(torch.nn.Module):
             else:
                 result_array[-1][i+1]=result
 
-        result_array = result_array[0].contiguous().tolist()
-        return result_array
+        result_array = result_array[0].contiguous()
+        return result_array[1:]
 

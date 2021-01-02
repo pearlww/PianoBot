@@ -28,7 +28,7 @@ def sequence_mask(length, max_length=None):
     return x.unsqueeze(0) < length.unsqueeze(1)
 
 
-def get_mask(size, src, trg, pad_token):
+def get_4d_mask(size, src, trg, pad_token):
     """
     :param size: the size of target input
     :param src: source tensor
@@ -49,10 +49,12 @@ def get_mask(size, src, trg, pad_token):
 
     # boolean reversing i.e) True * -1 + 1 = False
     seq_mask = ~sequence_mask(torch.arange(1, size+1).to(trg.device), size)
-    # look_ahead_mask = torch.max(dec_trg_mask, seq_mask)
     trg_mask  = trg_mask | seq_mask
 
     return src_mask, trg_mask
+def get_3d_mask(size, src, trg, pad_token):
+    pass
+
 
 def get_src_mask(size, src, pad_token):
     #Max: First three lines of get_mask    
@@ -68,4 +70,4 @@ if __name__ == '__main__':
     t = np.array([np.array([2, 3, 4, 5, 6]*20), np.array([1, 2, 3, 4, 5]*20)])
     print(t.shape)
 
-    print(get_mask(100, s, t, pad))
+    # print(get_mask(100, s, t, pad))

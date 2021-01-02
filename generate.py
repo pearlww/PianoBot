@@ -37,21 +37,19 @@ print("inputs:", inputs)
 targets = np.array([encode_midi(config.target_midi)[:128]])
 print("targets:", targets)
 
+results = mt.generate(torch.from_numpy(inputs), config.length)
+print("results:", results)
 
-inputs = torch.from_numpy(inputs)
-print("Before generation, shape: ", inputs.shape)
-result = mt.generate(inputs, config.length)
-print("outputs:", result)
 
-def remove_padding(result):
-    ret = []
-    for c in result:
-        if c!=388:
-            ret.append(c)
-    return ret
+# def remove_padding(result):
+#     ret = []
+#     for c in result:
+#         if c!=388:
+#             ret.append(c)
+#     return ret
 
-result = remove_padding(result)
-print("outputs without pad:", result)
+# result = remove_padding(result)
+# print("outputs without pad:", result)
 
 # decode_midi(result, file_path=config.save_path)
 
