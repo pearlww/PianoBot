@@ -57,7 +57,7 @@ class BasicMusicTransformer(torch.nn.Module):
         square_mask = square_mask[0][0]
         
         memory = self.Encoder(x, src_key_mask=src_mask)
-        decoder = self.Decoder(y, memory, tgt_mask=square_mask, tgt_key_mask=tgt_mask)
+        decoder = self.Decoder(y, memory, memory_key_mask=src_mask, tgt_mask=square_mask, tgt_key_mask=tgt_mask)
 
         fc = self.fc(decoder) # shape: (batch_size, seq_len, vocab_size)
         return fc.contiguous()
@@ -74,18 +74,30 @@ class BasicMusicTransformer(torch.nn.Module):
         result_array = torch.tensor([result_array])
         print(result_array)
         #I really think here we should put the source mask. Why not?
-        #Let's try
-        src_mask = utils.get_src_mask(self.max_seq+1, high_input, config.pad_token)
-        memory = self.Encoder(high_input, mask=src_mask)
+        #Let's try        src_mask, square_mask  = utils.get_mask(self.max_seq+1, x, y, config.pad_token)
+        src_mask, square_mask  = utils.get_mask(self.max_seq+1, high_input, result_array, config.pad_token)
+        tgt_mask = utils.get_src_mask(self.max_seq+1, result_array, config.pad_token)
+        
+        src_mask = torch.reshape(src_mask, (src_mask.size(0), src_mask.size(3)))
+        tgt_mask = torch.reshape(tgt_mask, (tgt_mask.size(0), tgt_mask.size(3)))
+        square_mask = square_mask[0][0]
+
+        memory = self.Encoder(high_input, src_key_mask=src_mask)
 
         for i in Bar('generating').iter(range(length)):
             if len(result_array) >= config.threshold_len+1:
                 result_array = result_array[:,1:]
 
             #Why len(result_array) and not self.max_seq+1? Because it makes sense.
-            src_mask, trg_mask = utils.get_mask(self.max_seq+1, high_input, result_array, pad_token=config.pad_token)
 
-            result = self.Decoder(result_array, memory, src_mask, trg_mask)
+            src_mask, square_mask  = utils.get_mask(self.max_seq+1, high_input, result_array, config.pad_token)
+            tgt_mask = utils.get_src_mask(self.max_seq+1, result_array, config.pad_token)
+        
+            src_mask = torch.reshape(src_mask, (src_mask.size(0), src_mask.size(3)))
+            tgt_mask = torch.reshape(tgt_mask, (tgt_mask.size(0), tgt_mask.size(3)))
+            square_mask = square_mask[0][0]
+
+            result = self.Decoder(result_array, memory, memory_key_mask=src_mask, tgt_mask=square_mask, tgt_key_mask=tgt_mask)
             result = self.fc(result)
             result = result.softmax(-1)
 

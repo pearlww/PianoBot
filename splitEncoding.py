@@ -289,3 +289,6 @@ def split_even_list(lst, size, min_length):
     if len(array[-1]) < min_length:
         array.pop()
     return array
+
+def remove_velocity(seq):
+    return [ev for ev in seq if ev < START_IDX['velocity']]
