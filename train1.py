@@ -22,7 +22,6 @@ print('| Summary - Device Info : {}'.format(torch.cuda.device))
 # load data
 dataset = DataLoader(config.pickle_dir+"high/", config.pickle_dir+"low/")
 
-
 # define model
 model = MusicTransformer(
             embedding_dim=config.embedding_dim,
@@ -57,6 +56,7 @@ for e in range(config.epochs):
     for b in range(len(dataset.X) // config.batch_size):
         model.train()
         batch_x, batch_y = dataset.batch(config.batch_size, config.max_seq, 'train') 
+
         # l = max_seq
         batch_x = torch.from_numpy(batch_x).contiguous().to(config.device, non_blocking=True, dtype=torch.int)
         # l = max_seq+2

@@ -2,7 +2,7 @@ import utils
 
 import math as m
 import numpy as np
-import math
+import math, copy
 import torch
 import torch.nn.functional as F
 
@@ -41,6 +41,53 @@ class DynamicPositionEmbedding(torch.nn.Module):
         x = x + torch.from_numpy(self.positional_embedding[:, :x.size(1), :]).to(x.device, dtype=x.dtype)
         return x
 
+class MultiHeadedAttention(torch.nn.Module):
+    def __init__(self, h, d_model):
+        "Take in model size and number of heads."
+        super(MultiHeadedAttention, self).__init__()
+        assert d_model % h == 0
+        # We assume d_v always equals d_k
+        self.d_k = d_model // h
+        self.h = h
+        self.linears = self.clones(torch.nn.Linear(d_model, d_model), 4)
+        self.attn = None
+        
+    def forward(self, inputs, mask=None):
+        "Implements Figure 2"
+        query, key, value = inputs
+
+        if mask is not None:
+            # Same mask applied to all h heads.
+            mask = mask.unsqueeze(1)
+        nbatches = query.size(0)
+        
+        # 1) Do all the linear projections in batch from d_model => h x d_k 
+        query, key, value = \
+            [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+             for l, x in zip(self.linears, (query, key, value))]
+        
+        # 2) Apply attention on all the projected vectors in batch. 
+        x, self.attn = self.attention(query, key, value, mask=mask)
+        
+        # 3) "Concat" using a view and apply a final linear. 
+        x = x.transpose(1, 2).contiguous() \
+             .view(nbatches, -1, self.h * self.d_k)
+        return self.linears[-1](x)
+
+    def attention(self, query, key, value, mask=None):
+        "Compute 'Scaled Dot Product Attention'"
+        d_k = query.size(-1)
+        scores = torch.matmul(query, key.transpose(-2, -1)) \
+                / math.sqrt(d_k)
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+        p_attn = F.softmax(scores, dim = -1)
+        if dropout is not None:
+            p_attn = dropout(p_attn)
+        return torch.matmul(p_attn, value), p_attn
+    def clones(self, module, N):
+        "Produce N identical layers."
+        return torch.nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 class RelativeGlobalAttention(torch.nn.Module):
     """
@@ -64,7 +111,7 @@ class RelativeGlobalAttention(torch.nn.Module):
         if self.additional:
             self.Radd = None
 
-    def forward(self, inputs, mask=None, **kwargs):
+    def forward(self, inputs, mask=None):
         """
         :param inputs: a list of tensors. i.e) [Q, K, V]
         :param mask: mask tensor
@@ -144,6 +191,7 @@ class EncoderLayer(torch.nn.Module):
 
         self.d_model = d_model
         self.rga = RelativeGlobalAttention(h=h, d=d_model, max_seq=max_seq, add_emb=additional)
+        self.sa = MultiHeadedAttention(h=h, d_model=d_model)
 
         self.FFN_pre = torch.nn.Linear(self.d_model, self.d_model//2)
         self.FFN_suf = torch.nn.Linear(self.d_model//2, self.d_model)
@@ -154,8 +202,10 @@ class EncoderLayer(torch.nn.Module):
         self.dropout1 = torch.nn.Dropout(rate)
         self.dropout2 = torch.nn.Dropout(rate)
 
-    def forward(self, x, mask=None, **kwargs):
+    def forward(self, x, mask=None):
         attn_out, w = self.rga([x,x,x], mask)
+        # attn_out = self.sa([x,x,x], mask)
+
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
@@ -173,6 +223,8 @@ class DecoderLayer(torch.nn.Module):
         self.d_model = d_model
         self.rga2 = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
         self.rga = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
+        self.sa2 = MultiHeadedAttention(h=h, d_model=d_model)
+        self.sa = MultiHeadedAttention(h=h, d_model=d_model)
 
         self.FFN_pre = torch.nn.Linear(self.d_model, self.d_model // 2)
         self.FFN_suf = torch.nn.Linear(self.d_model // 2, self.d_model)
@@ -185,17 +237,17 @@ class DecoderLayer(torch.nn.Module):
         self.dropout2 = torch.nn.Dropout(rate)
         self.dropout3 = torch.nn.Dropout(rate)
 
-    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, w_out=False, **kwargs):
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, **kwargs):
         #print("Forwarding a decoder layer")
+
         attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
+        #attn_out = self.sa([x,x,x], mask=tgt_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
-        if encode_out is None:
-            attn_out2, aw2 = self.rga2([out1, out1, out1], mask=src_mask)
-        else:
-            #print("There is encode_out")
-            attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
+
+        attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
+        #attn_out2 = self.sa([out1, encode_out, encode_out], mask=src_mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
 
@@ -204,10 +256,7 @@ class DecoderLayer(torch.nn.Module):
         ffn_out = self.dropout3(ffn_out)
         out = self.layernorm3(attn_out2+ffn_out)
 
-        if w_out:
-            return out, aw1, aw2
-        else:
-            return out
+        return out
 
 
 class Encoder(torch.nn.Module):
@@ -218,8 +267,7 @@ class Encoder(torch.nn.Module):
         self.num_layers = num_layers
 
         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.enc_layers = torch.nn.ModuleList(
             [EncoderLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
@@ -250,8 +298,7 @@ class Decoder(torch.nn.Module):
         self.num_layers = num_layers
 
         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.dec_layers = torch.nn.ModuleList(
             [DecoderLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)

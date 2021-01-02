@@ -16,9 +16,9 @@ if torch.cuda.is_available():
 else:
     config.device = torch.device('cpu')
 
-current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-gen_log_dir = 'logs/mt_decoder/generate_'+current_time+'/generate'
-gen_summary_writer = SummaryWriter(gen_log_dir)
+# current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+# gen_log_dir = 'logs/mt_decoder/generate_'+current_time+'/generate'
+# gen_summary_writer = SummaryWriter(gen_log_dir)
 
 
 mt = MusicTransformer(
@@ -33,25 +33,23 @@ mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
 mt.eval()
 
 inputs = np.array([encode_midi(config.input_midi)[:128]])
-#print("inputs:", inputs)
+print("inputs:", inputs)
 targets = np.array([encode_midi(config.target_midi)[:128]])
-#print("targets:", targets)
+print("targets:", targets)
+
+results = mt.generate(torch.from_numpy(inputs), config.length)
+print("results:", results)
 
 
-inputs = torch.from_numpy(inputs)
-print("Before generation, shape: ", inputs.shape)
-result = mt.generate(inputs, config.length, gen_summary_writer)
-print("outputs", result)
+# def remove_padding(result):
+#     ret = []
+#     for c in result:
+#         if c!=388:
+#             ret.append(c)
+#     return ret
 
-def remove_padding(result):
-    ret = []
-    for c in result:
-        if c!=388:
-            ret.append(c)
-    return ret
-
-result = remove_padding(result)
-print("outputs without pad:", result)
+# result = remove_padding(result)
+# print("outputs without pad:", result)
 
 # decode_midi(result, file_path=config.save_path)
 

@@ -317,16 +317,16 @@ def preprocess_midi_files(midi_root, save_dir):
 if __name__ == '__main__':
 
     
-    midi_root = '/home/pearl/myGit/PianoBot/maestro-v2.0.0/'
-    save_dir = '/home/pearl/myGit/PianoBot/data_splited/'
+    midi_root = './raw_data/'
+    save_dir = './splited/'
 
     split_high_low(midi_root, save_dir)
 
-    midi_root = './output/high/'
+    midi_root = './splited/high/'
     save_dir = './encoded/high/'
     preprocess_midi_files(midi_root, save_dir)
 
-    midi_root = './output/low/'
+    midi_root = './splited/low/'
     save_dir = './encoded/low/'
     preprocess_midi_files(midi_root, save_dir)
 
