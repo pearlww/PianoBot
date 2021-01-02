@@ -3,6 +3,7 @@ import utils
 import math as m
 import numpy as np
 import math, copy
+import config
 import torch
 import torch.nn.functional as F
 
@@ -82,8 +83,7 @@ class MultiHeadedAttention(torch.nn.Module):
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
         p_attn = F.softmax(scores, dim = -1)
-        if dropout is not None:
-            p_attn = dropout(p_attn)
+
         return torch.matmul(p_attn, value), p_attn
     def clones(self, module, N):
         "Produce N identical layers."
@@ -203,8 +203,8 @@ class EncoderLayer(torch.nn.Module):
         self.dropout2 = torch.nn.Dropout(rate)
 
     def forward(self, x, mask=None):
-        attn_out, w = self.rga([x,x,x], mask)
-        # attn_out = self.sa([x,x,x], mask)
+        # attn_out, w = self.rga([x,x,x], mask)
+        attn_out = self.sa([x,x,x], mask)
 
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
@@ -240,14 +240,14 @@ class DecoderLayer(torch.nn.Module):
     def forward(self, x, encode_out, src_mask=None, tgt_mask=None, **kwargs):
         #print("Forwarding a decoder layer")
 
-        attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
-        #attn_out = self.sa([x,x,x], mask=tgt_mask)
+        # attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
+        attn_out = self.sa([x,x,x], mask=tgt_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
 
-        attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
-        #attn_out2 = self.sa([out1, encode_out, encode_out], mask=src_mask)
+        # attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
+        attn_out2 = self.sa([out1, encode_out, encode_out], mask=src_mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
 
@@ -266,7 +266,7 @@ class Encoder(torch.nn.Module):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=config.pad_token)
         self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.enc_layers = torch.nn.ModuleList(
@@ -297,7 +297,7 @@ class Decoder(torch.nn.Module):
         self.d_model = d_model
         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=388)
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=config.pad_token)
         self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
         self.dec_layers = torch.nn.ModuleList(

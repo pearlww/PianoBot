@@ -7,7 +7,7 @@ pickle_dir = './encoded/'
 # train
 device = torch.device('cpu')
 
-epochs = 50 # 100 for debug
+epochs = 100 # 100 for debug
 batch_size = 16 # 2 for debag
 dropout = 0.1
 debug = 'true'
@@ -16,11 +16,11 @@ label_smooth = 0.1
 
 
 # model
-experiment = 'embedding256-layer2'
+experiment = 'embedding256-layer3'
 max_seq = 128
 min_seq = 16
 embedding_dim = 256 #512
-num_layers = 2
+num_layers = 3
 event_dim = 388
 
 
@@ -38,5 +38,4 @@ model_dir = "./models"
 input_midi = './splited/high/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
 target_midi = './splited/low/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
 save_path = 'output/generated.mid'
-length =  128
-threshold_len = 128
+max_length =  128
