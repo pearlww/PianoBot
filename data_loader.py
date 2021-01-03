@@ -148,8 +148,8 @@ class DataLoader:
         #Else we've got the sequences, but without padding
         #PAD
         
-        seqX = remove_velocity(seqX)
-        seqY = remove_velocity(seqY)
+        # seqX = remove_velocity(seqX)
+        # seqY = remove_velocity(seqY)
         
         seqX = pad_sequence(seqX, pad_token, max_length, add_eos=False)
         seqY = pad_sequence(seqY, pad_token, max_length, add_eos=True)
