@@ -81,7 +81,7 @@ for e in range(config.epochs):
         optimizer.step()
         train_summary_writer.add_scalar('loss', loss, global_step=idx)
 
-        if b % 100 == 0:
+        if b % 10 == 0:
             model.eval()
             eval_x, eval_y = dataset.batch(2, config.max_seq, 'eval')
             eval_x = torch.from_numpy(eval_x).contiguous().to(config.device, dtype=torch.int)

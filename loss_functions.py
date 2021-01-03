@@ -7,7 +7,7 @@ import config
 from more_loss_functions import better_loss
 
 class TransformerLoss(CrossEntropyLoss):
-    def __init__(self, ignore_index=config.pad_token, reduction='mean') -> None:
+    def __init__(self, ignore_index=config.pad_token, reduction='none') -> None:
         self.reduction = reduction
         self.ignore_index = ignore_index
         super().__init__(ignore_index=self.ignore_index, reduction='none')

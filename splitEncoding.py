@@ -160,7 +160,9 @@ Returns without padding.
 """
 def get_sequences(x, y, maxint, xpos):
     xpos = maxint*xpos
-    seqX = x[xpos:xpos+maxint]
+    #Remove bad note offs
+    seqX = get_correct_interval(x, xpos, maxint)
+    #seqX = x[xpos:xpos+maxint]
     timeX = calculate_time(seqX)
     seqY = y
     #If the sequence is not the first one, we have to find where does the sequence
@@ -171,12 +173,50 @@ def get_sequences(x, y, maxint, xpos):
         seqY = after_time_sequence(y, prevTime)
     
     seqY, timeY = cut_time_length(seqY, timeX, maxint)
+    #Remove bad note offs (wont affect the time, but it might affect the length - too bad!)
+    seqY = get_correct_interval(seqY, 0, len(seqY))
     if timeY < timeX:
         #We have to cut x to the time of Y
         seqX = cut_time(seqX, timeY)
         
     return seqX, seqY
-        
+
+r"""
+Gets a subsequence starting at pos with the given size, but it makes sure that
+no note_offs and note_ons are out of match (removes the bad ones)
+Might return a smaller sequence if there are not enough events
+"""
+def get_correct_interval(seq, pos, size):
+    note_on=[False]*RANGE_NOTE_ON
+    i=0
+    j=pos
+    ret=[]
+    while j < len(seq) and i < size:
+        ev = seq[j]
+        #Check note ons
+        if ev < START_IDX['note_off']:
+            if not note_on[ev]:
+                #Correct note on
+                ret.append(ev)
+                #Reset
+                note_on[ev] = True
+                i+=1
+                
+        #Check note offs
+        elif ev < START_IDX['time_shift']:
+            if note_on[ev-128]:
+                #Correct note off
+                ret.append(ev)
+                #Reset
+                note_on[ev-128] = False
+                i+=1
+        #All other events are added
+        else:
+            ret.append(ev)
+            i+=1
+        j+=1
+    
+    return ret
 
 #Calculates and returns how many timesteps are in the given sequence
 def calculate_time(longSeq):
@@ -289,3 +329,36 @@ def split_even_list(lst, size, min_length):
     if len(array[-1]) < min_length:
         array.pop()
     return array
+
+r"""
+Returns the sequence without the velocity events
+"""
+def remove_velocity(seq):
+    return [ev for ev in seq if ev < START_IDX['velocity']]
+
+r"""
+Checks the causal relationship note on -> note off
+"""
+def check_validity(seq):
+    note_on=[False]*RANGE_NOTE_ON
+    i=0
+    while i < len(seq):
+        ev = seq[i]
+        #Check note ons
+        if ev < START_IDX['note_off']:
+            if note_on[ev]:
+                print("Double note on at {}: {}".format(i, ev))
+                return False
+            else:
+                note_on[ev] = True
+                
+        #Check note offs
+        elif ev < START_IDX['time_shift']:
+            if not note_on[ev-128]:
+                print("Bad note off at {}: {}".format(i, ev))
+                return False
+            else:
+                note_on[ev-128] = False
+        i+=1
+    return True
+    
