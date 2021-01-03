@@ -247,7 +247,7 @@ def decode_midi(idx_array, file_path=None):
 
     mid = pretty_midi.PrettyMIDI()
     # if want to change instument, see https://www.midi.org/specifications/item/gm-level-1-sound-set
-    instument = pretty_midi.Instrument(1, False, "Developed By Yang-Kichang")
+    instument = pretty_midi.Instrument(1, False, "Developed By PianoBot")
     instument.notes = note_seq
 
     mid.instruments.append(instument)

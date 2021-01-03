@@ -25,14 +25,14 @@ class MusicTransformer(torch.nn.Module):
         self.dist = dist
         self.writer = writer
 
-        self.Encoder = layers.Encoder(num_layers=self.num_layer, 
+        self.Encoder = layers.EncoderMusic(num_layers=self.num_layer, 
                                       d_model=self.embedding_dim,
                                       input_vocab_size=self.vocab_size, 
                                       rate=dropout, 
                                       max_len=max_seq
                                       )
 
-        self.Decoder = layers.Decoder(num_layers=self.num_layer, 
+        self.Decoder = layers.DecoderMusic(num_layers=self.num_layer, 
                                       d_model=self.embedding_dim,
                                       input_vocab_size=self.vocab_size, 
                                       rate=dropout, 
@@ -49,9 +49,9 @@ class MusicTransformer(torch.nn.Module):
         Returns:
             output: (batch_size, seq_len, vocab_size)
         """
-        # src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
-        src_mask = utils.get_src_mask(x, config.pad_token)
-        trg_mask = utils.get_tgt_mask(y,config.pad_token)
+        src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
+        # src_mask = utils.get_src_mask(x, config.pad_token)
+        # trg_mask = utils.get_tgt_mask(y,config.pad_token)
 
         memory = self.Encoder(x, mask=src_mask)
         decoder = self.Decoder(y, memory, src_mask, trg_mask)

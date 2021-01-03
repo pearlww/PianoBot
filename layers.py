@@ -190,7 +190,6 @@ class EncoderLayer(torch.nn.Module):
         super(EncoderLayer, self).__init__()
 
         self.d_model = d_model
-        self.rga = RelativeGlobalAttention(h=h, d=d_model, max_seq=max_seq, add_emb=additional)
         self.sa = MultiHeadedAttention(h=h, d_model=d_model)
 
         self.FFN_pre = torch.nn.Linear(self.d_model, self.d_model//2)
@@ -203,7 +202,6 @@ class EncoderLayer(torch.nn.Module):
         self.dropout2 = torch.nn.Dropout(rate)
 
     def forward(self, x, mask=None):
-        # attn_out, w = self.rga([x,x,x], mask)
         attn_out = self.sa([x,x,x], mask)
 
         attn_out = self.dropout1(attn_out)
@@ -221,8 +219,7 @@ class DecoderLayer(torch.nn.Module):
         super(DecoderLayer, self).__init__()
 
         self.d_model = d_model
-        self.rga2 = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
-        self.rga = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
+
         self.sa2 = MultiHeadedAttention(h=h, d_model=d_model)
         self.sa = MultiHeadedAttention(h=h, d_model=d_model)
 
@@ -240,14 +237,11 @@ class DecoderLayer(torch.nn.Module):
     def forward(self, x, encode_out, src_mask=None, tgt_mask=None, **kwargs):
         #print("Forwarding a decoder layer")
 
-        # attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
         attn_out = self.sa([x,x,x], mask=tgt_mask)
         attn_out = self.dropout1(attn_out)
         out1 = self.layernorm1(attn_out+x)
 
-
-        # attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
-        attn_out2 = self.sa([out1, encode_out, encode_out], mask=src_mask)
+        attn_out2 = self.sa2([out1, encode_out, encode_out], mask=src_mask)
         attn_out2 = self.dropout2(attn_out2)
         attn_out2 = self.layernorm2(out1+attn_out2)
 
@@ -258,6 +252,75 @@ class DecoderLayer(torch.nn.Module):
 
         return out
 
+class EncoderMusicLayer(torch.nn.Module):
+    def __init__(self, d_model, rate=0.1, h=16, additional=False, max_seq=2048):
+        super(EncoderMusicLayer, self).__init__()
+
+        self.d_model = d_model
+        self.rga = RelativeGlobalAttention(h=h, d=d_model, max_seq=max_seq, add_emb=additional)
+
+        self.FFN_pre = torch.nn.Linear(self.d_model, self.d_model//2)
+        self.FFN_suf = torch.nn.Linear(self.d_model//2, self.d_model)
+
+        self.layernorm1 = torch.nn.LayerNorm(self.d_model, eps=1e-6)
+        self.layernorm2 = torch.nn.LayerNorm(self.d_model, eps=1e-6)
+
+        self.dropout1 = torch.nn.Dropout(rate)
+        self.dropout2 = torch.nn.Dropout(rate)
+
+    def forward(self, x, mask=None):
+        attn_out, w = self.rga([x,x,x], mask)
+
+
+        attn_out = self.dropout1(attn_out)
+        out1 = self.layernorm1(attn_out+x)
+
+        ffn_out = F.relu(self.FFN_pre(out1))
+        ffn_out = self.FFN_suf(ffn_out)
+        ffn_out = self.dropout2(ffn_out)
+        out2 = self.layernorm2(out1+ffn_out)
+        return out2
+
+
+class DecoderMusicLayer(torch.nn.Module):
+    def __init__(self, d_model, rate=0.1, h=16, additional=False, max_seq=2048):
+        super(DecoderMusicLayer, self).__init__()
+
+        self.d_model = d_model
+        self.rga2 = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
+        self.rga = RelativeGlobalAttention(d=d_model, h=h, max_seq=max_seq, add_emb=additional)
+
+        self.FFN_pre = torch.nn.Linear(self.d_model, self.d_model // 2)
+        self.FFN_suf = torch.nn.Linear(self.d_model // 2, self.d_model)
+
+        self.layernorm1 = torch.nn.LayerNorm(self.d_model, eps=1e-6)
+        self.layernorm2 = torch.nn.LayerNorm(self.d_model, eps=1e-6)
+        self.layernorm3 = torch.nn.LayerNorm(self.d_model, eps=1e-6)
+
+        self.dropout1 = torch.nn.Dropout(rate)
+        self.dropout2 = torch.nn.Dropout(rate)
+        self.dropout3 = torch.nn.Dropout(rate)
+
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None, **kwargs):
+        #print("Forwarding a decoder layer")
+
+        attn_out, aw1 = self.rga([x, x, x], mask=tgt_mask)
+
+        attn_out = self.dropout1(attn_out)
+        out1 = self.layernorm1(attn_out+x)
+
+
+        attn_out2, aw2 = self.rga2([out1, encode_out, encode_out], mask=src_mask)
+
+        attn_out2 = self.dropout2(attn_out2)
+        attn_out2 = self.layernorm2(out1+attn_out2)
+
+        ffn_out = F.relu(self.FFN_pre(attn_out2))
+        ffn_out = self.FFN_suf(ffn_out)
+        ffn_out = self.dropout3(ffn_out)
+        out = self.layernorm3(attn_out2+ffn_out)
+
+        return out
 
 class Encoder(torch.nn.Module):
     def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
@@ -316,7 +379,67 @@ class Decoder(torch.nn.Module):
         for i in range(self.num_layers):
             x = self.dec_layers[i](x, encode_out, src_mask, tgt_mask)
         return x
-    
+
+
+class EncoderMusic(torch.nn.Module):
+    def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
+        super(EncoderMusic, self).__init__()
+
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=config.pad_token)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+
+        self.enc_layers = torch.nn.ModuleList(
+            [EncoderMusicLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
+             for _ in range(num_layers)])
+        self.dropout = torch.nn.Dropout(rate)
+
+    def forward(self, x, mask=None):
+        """
+        input x:  (batch_size, seq_len)
+
+        output: (batch_size, seq_len, embedding_dim)
+        """
+        # adding embedding and position encoding.
+        x = self.embedding(x.to(torch.long))  
+        x *= math.sqrt(self.d_model)
+        x = self.pos_encoding(x)
+        x = self.dropout(x)
+        for i in range(self.num_layers):
+            x = self.enc_layers[i](x, mask)
+        return x
+
+
+class DecoderMusic(torch.nn.Module):
+    def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
+        super(DecoderMusic, self).__init__()
+
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model, padding_idx=config.pad_token)
+        self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+
+        self.dec_layers = torch.nn.ModuleList(
+            [DecoderMusicLayer(d_model, rate, h=self.d_model // 64, additional=False, max_seq=max_len)
+             for _ in range(num_layers)])
+        self.dropout = torch.nn.Dropout(rate)
+
+    def forward(self, x, encode_out, src_mask=None, tgt_mask=None):
+
+        # adding embedding and position encoding.
+        x = self.embedding(x.to(torch.long))  
+        x *= math.sqrt(self.d_model)
+        x = self.pos_encoding(x)
+        x = self.dropout(x)
+
+        for i in range(self.num_layers):
+            x = self.dec_layers[i](x, encode_out, src_mask, tgt_mask)
+        return x
+
+
 class BasicEncoder(torch.nn.Module):
     def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
         super(BasicEncoder, self).__init__()

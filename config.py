@@ -16,7 +16,8 @@ label_smooth = 0.1
 
 
 # model
-experiment = 'embedding256-layer3'
+experiment = 'tf-seq128-layer3'
+
 max_seq = 128
 min_seq = 16
 embedding_dim = 256 #512
@@ -35,7 +36,7 @@ model_dir = "./models"
 
 
 # generate
-input_midi = './splited/high/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
-target_midi = './splited/low/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
-save_path = 'output/generated.mid'
+input_midi = './split/high/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
+target_midi = './split/low/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
+save_path = './output/generated.mid'
 max_length =  128
