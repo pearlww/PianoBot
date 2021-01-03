@@ -3,7 +3,9 @@ import layers
 
 import sys
 import torch
+import numpy as np
 import torch.distributions as dist
+from torch.autograd import Variable
 import random
 import utils
 
@@ -49,9 +51,8 @@ class Transformer(torch.nn.Module):
         Returns:
             output: (batch_size, seq_len, vocab_size)
         """
-        # src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
-        src_mask = utils.get_src_mask(x, config.pad_token)
-        trg_mask = utils.get_tgt_mask(y,config.pad_token)
+        src_mask = self.get_src_mask(x, config.pad_token)
+        trg_mask = self.get_tgt_mask(y,config.pad_token)
 
         memory = self.Encoder(x, mask=src_mask)
         decoder = self.Decoder(y, memory, src_mask, trg_mask)
@@ -73,14 +74,14 @@ class Transformer(torch.nn.Module):
 
         #I really think here we should put the source mask. Why not?
         #Let's try
-        src_mask = utils.get_src_mask(input, config.pad_token)
+        src_mask = self.get_src_mask(input, config.pad_token)
         memory = self.Encoder(input, mask=src_mask)
 
         for i in Bar('generating').iter(range(max_length)):
 
             #Why len(result_array) and not self.max_seq+1? Because it makes sense.
             # src_mask, trg_mask = utils.get_4d_mask(i, input, result_array, pad_token=config.pad_token)
-            trg_mask = utils.get_tgt_mask(result_array,config.pad_token)
+            trg_mask = self.get_tgt_mask(result_array,config.pad_token)
 
             result = self.Decoder(result_array, memory, src_mask, trg_mask)
             result = self.fc(result)
@@ -105,3 +106,17 @@ class Transformer(torch.nn.Module):
         result_array = result_array[0]
         return result_array[1:]
 
+    def subsequent_mask(self, size):
+        "Mask out subsequent positions."
+        attn_shape = (1, size, size)
+        subsequent_mask = np.triu(np.ones(attn_shape), k=1).astype('uint8')
+        return torch.from_numpy(subsequent_mask) == 0
+        
+    def get_src_mask(self, src, pad_token):
+        src_mask = (src != pad_token).unsqueeze(-2)
+        return src_mask
+
+    def get_tgt_mask(self, tgt, pad_token):
+        tgt_mask = (tgt != pad_token).unsqueeze(-2)
+        tgt_mask = tgt_mask & Variable(self.subsequent_mask(tgt.size(-1)).type_as(tgt_mask.data))
+        return tgt_mask

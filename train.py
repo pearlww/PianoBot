@@ -24,7 +24,7 @@ print('| Summary - Device Info : {}'.format(torch.cuda.device))
 # load data
 dataset = DataLoader(config.pickle_dir+"high/", config.pickle_dir+"low/")
 
-# define model
+#define model
 model = MusicTransformer(
             embedding_dim=config.embedding_dim,
             vocab_size=config.vocab_size,
@@ -88,8 +88,10 @@ for e in range(config.epochs):
         loss.backward()
         optimizer.step()
         train_summary_writer.add_scalar('loss', loss, global_step=idx)
+        torch.cuda.empty_cache()
+        idx += 1
 
-        if b % 100 == 0:
+        if b % 100 ==0:
             model.eval()
             eval_x, eval_y = dataset.batch(2, config.max_seq, 'eval')
             eval_x = torch.from_numpy(eval_x).contiguous().to(config.device, dtype=torch.int)
@@ -100,26 +102,19 @@ for e in range(config.epochs):
 
             eval_preds = model.forward(eval_x, eval_target_inputs)
             eval_loss = criterion(eval_preds, eval_targets)
-            torch.save(model.state_dict(), config.model_dir+'/train-{}.pth'.format(e))
-
-            if b == 0:
-                train_summary_writer.add_histogram("target_analysis", batch_y, global_step=e)
-                train_summary_writer.add_histogram("source_analysis", batch_x, global_step=e)
-
-
             eval_summary_writer.add_scalar('loss', eval_loss, global_step=idx)
 
             print('\n====================================================')
             print('Epoch:{}/{}'.format(e, config.epochs))
-            print('Batch: {}/{}'.format(b, len(dataset.X) // config.batch_size))
+            # print('Batch: {}/{}'.format(b, len(dataset.X) // config.batch_size))
             print('Train >>>> Loss: {:6.6}'.format(loss))
             print('Eval >>>> Loss: {:6.6}'.format(eval_loss))
-            
-        torch.cuda.empty_cache()
-        idx += 1
+
+    if e%10 == 0:
+        torch.save(model.state_dict(), config.model_dir+'/train-{}.pth'.format(e))
 
 
-torch.save(model.state_dict(), config.model_dir+'/final.pth'.format(idx))
+torch.save(model.state_dict(), config.model_dir+'/music-final.pth'.format(idx))
 eval_summary_writer.close()
 train_summary_writer.close()
 

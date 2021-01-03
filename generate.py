@@ -29,7 +29,7 @@ mt = MusicTransformer(
     dropout=0)
 
   
-mt.load_state_dict(torch.load(config.model_dir+'/final.pth'))
+mt.load_state_dict(torch.load(config.model_dir+'/music-final.pth'))
 mt.eval()
 
 inputs = np.array([encode_midi(config.input_midi)[:128]])

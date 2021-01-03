@@ -49,12 +49,12 @@ class MusicTransformer(torch.nn.Module):
         Returns:
             output: (batch_size, seq_len, vocab_size)
         """
-        src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
-        # src_mask = utils.get_src_mask(x, config.pad_token)
-        # trg_mask = utils.get_tgt_mask(y,config.pad_token)
+        # src_mask, trg_mask  = utils.get_4d_mask(self.max_seq+1, x, y, config.pad_token)
+        src_mask = self.get_src_mask(x, config.pad_token)
+        tgt_mask = self.get_tgt_mask(y,config.pad_token)
 
         memory = self.Encoder(x, mask=src_mask)
-        decoder = self.Decoder(y, memory, src_mask, trg_mask)
+        decoder = self.Decoder(y, memory, src_mask, tgt_mask)
 
         fc = self.fc(decoder) # shape: (batch_size, seq_len, vocab_size)
         return fc.contiguous()
@@ -73,16 +73,16 @@ class MusicTransformer(torch.nn.Module):
 
         #I really think here we should put the source mask. Why not?
         #Let's try
-        src_mask = utils.get_src_mask(input, config.pad_token)
+        src_mask = self.get_src_mask(input, config.pad_token)
         memory = self.Encoder(input, mask=src_mask)
 
         for i in Bar('generating').iter(range(max_length)):
 
             #Why len(result_array) and not self.max_seq+1? Because it makes sense.
             # src_mask, trg_mask = utils.get_4d_mask(i, input, result_array, pad_token=config.pad_token)
-            trg_mask = utils.get_tgt_mask(result_array,config.pad_token)
+            tgt_mask = self.get_tgt_mask(result_array,config.pad_token)
 
-            result = self.Decoder(result_array, memory, src_mask, trg_mask)
+            result = self.Decoder(result_array, memory, src_mask, tgt_mask)
             result = self.fc(result)
             result = result.softmax(-1)
 
@@ -105,3 +105,24 @@ class MusicTransformer(torch.nn.Module):
         result_array = result_array[0]
         return result_array[1:]
 
+    def subsequent_mask(self, length, max_length=None):
+        if max_length is None:
+            max_length = length.max()
+        x = torch.arange(max_length, dtype=length.dtype, device=length.device)
+        return x.unsqueeze(0) < length.unsqueeze(1)
+    
+    def get_src_mask(self, src, pad_token):
+        src = src[:, None, None, :] # (batch_size, 1, 1, seq_length)
+        src_pad_tensor = torch.ones_like(src).to(src.device.type) * pad_token
+        src_mask = src == src_pad_tensor
+        return src_mask
+
+    def get_tgt_mask(self, tgt, pad_token):
+        tgt = tgt[:, None, None, :]
+        tgt_pad_tensor = torch.ones_like(tgt).to(tgt.device.type) * pad_token
+        tgt_mask = tgt == tgt_pad_tensor
+
+        # boolean reversing i.e) True * -1 + 1 = False
+        seq_mask = ~ self.subsequent_mask(torch.arange(1, tgt.size(-1)+1).to(tgt.device), tgt.size(-1))
+        tgt_mask  = tgt_mask | seq_mask
+        return tgt_mask

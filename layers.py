@@ -20,7 +20,6 @@ def sinusoid(max_seq, embedding_dim):
         for pos in range(max_seq)
     ]])
 
-
 class DynamicPositionEmbedding(torch.nn.Module):
     def __init__(self, embedding_dim, max_seq=2048):
         super().__init__()
@@ -85,6 +84,7 @@ class MultiHeadedAttention(torch.nn.Module):
         p_attn = F.softmax(scores, dim = -1)
 
         return torch.matmul(p_attn, value), p_attn
+
     def clones(self, module, N):
         "Produce N identical layers."
         return torch.nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
@@ -165,12 +165,12 @@ class RelativeGlobalAttention(torch.nn.Module):
         e = self.E[starting_point:,:]
         return e
 
-    def _skewing(self, tensor: torch.Tensor):
-        padded = F.pad(tensor, [1, 0, 0, 0, 0, 0, 0, 0])
+    def _skewing(self, qe: torch.Tensor):
+        padded = F.pad(qe, [1, 0, 0, 0, 0, 0, 0, 0])
         reshaped = torch.reshape(padded, shape=[padded.size(0), padded.size(1), padded.size(-1), padded.size(-2)])
         Srel = reshaped[:, :, 1:, :]
         if self.len_k > self.len_q:
-            Srel = F.pad(Srel, [0, 0, 0, 0, 0, 0, 0, self.len_k-self.len_q])
+            Srel = F.pad(Srel, [self.len_k-self.len_q, 0, 0, 0, 0, 0, 0, 0])
         elif self.len_k < self.len_q:
             Srel = Srel[:, :, :, :self.len_k]
 
@@ -178,7 +178,7 @@ class RelativeGlobalAttention(torch.nn.Module):
 
     @staticmethod
     def _qe_masking(qe):
-        mask = utils.sequence_mask(
+        mask = utils.subsequent_mask(
             torch.arange(qe.size()[-1] - 1, qe.size()[-1] - qe.size()[-2] - 1, -1).to(qe.device),
             qe.size()[-1])
         mask = ~mask.to(mask.device)
@@ -440,78 +440,78 @@ class DecoderMusic(torch.nn.Module):
         return x
 
 
-class BasicEncoder(torch.nn.Module):
-    def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
-        super(BasicEncoder, self).__init__()
+# class BasicEncoder(torch.nn.Module):
+#     def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
+#         super(BasicEncoder, self).__init__()
 
-        self.d_model = d_model
-        self.num_layers = num_layers
+#         self.d_model = d_model
+#         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+#         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
+#         if True:
+#             self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
-        self.enc_layers = torch.nn.ModuleList(
-            [torch.nn.TransformerEncoderLayer(d_model=d_model,nhead=8,dim_feedforward=max_len,dropout=rate)
-             for _ in range(num_layers)])
-        self.dropout = torch.nn.Dropout(rate)
+#         self.enc_layers = torch.nn.ModuleList(
+#             [torch.nn.TransformerEncoderLayer(d_model=d_model,nhead=8,dim_feedforward=max_len,dropout=rate)
+#              for _ in range(num_layers)])
+#         self.dropout = torch.nn.Dropout(rate)
 
-    def forward(self, x, src_mask=None, src_key_mask=None):
-        """
-        input x:  (batch_size, seq_len)
+#     def forward(self, x, src_mask=None, src_key_mask=None):
+#         """
+#         input x:  (batch_size, seq_len)
 
-        output: (batch_size, seq_len, embedding_dim)
-        """
-        # adding embedding and position encoding.
-        x = self.embedding(x.to(torch.long))  
-        x *= math.sqrt(self.d_model)
-        x = self.pos_encoding(x)
-        x = self.dropout(x)
+#         output: (batch_size, seq_len, embedding_dim)
+#         """
+#         # adding embedding and position encoding.
+#         x = self.embedding(x.to(torch.long))  
+#         x *= math.sqrt(self.d_model)
+#         x = self.pos_encoding(x)
+#         x = self.dropout(x)
         
-        #RESHAPE FOR PYTORCH: BxLxV -> LxBxV
-        x = x.permute(1,0,2)
+#         #RESHAPE FOR PYTORCH: BxLxV -> LxBxV
+#         x = x.permute(1,0,2)
         
-        for i in range(self.num_layers):
-            x = self.enc_layers[i](x, src_mask=src_mask, src_key_padding_mask=src_key_mask)
-            if torch.isnan(x[0][0][0]):
-                print("Encoder nan")
+#         for i in range(self.num_layers):
+#             x = self.enc_layers[i](x, src_mask=src_mask, src_key_padding_mask=src_key_mask)
+#             if torch.isnan(x[0][0][0]):
+#                 print("Encoder nan")
             
-        #RESHAPE FOR OUTPUT: LxBxV -> BxLxV
-        x = x.permute(1,0,2)
-        return x
+#         #RESHAPE FOR OUTPUT: LxBxV -> BxLxV
+#         x = x.permute(1,0,2)
+#         return x
 
 
-class BasicDecoder(torch.nn.Module):
-    def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
-        super(BasicDecoder, self).__init__()
+# class BasicDecoder(torch.nn.Module):
+#     def __init__(self, num_layers, d_model, input_vocab_size, rate=0.1, max_len=None):
+#         super(BasicDecoder, self).__init__()
 
-        self.d_model = d_model
-        self.num_layers = num_layers
+#         self.d_model = d_model
+#         self.num_layers = num_layers
 
-        self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
-        if True:
-            self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
+#         self.embedding = torch.nn.Embedding(num_embeddings=input_vocab_size, embedding_dim=d_model)
+#         if True:
+#             self.pos_encoding = DynamicPositionEmbedding(self.d_model, max_seq=max_len)
 
-        self.dec_layers = torch.nn.ModuleList(
-            [torch.nn.TransformerDecoderLayer(d_model=d_model,nhead=8,dim_feedforward=max_len,dropout=rate)
-             for _ in range(num_layers)])
-        self.dropout = torch.nn.Dropout(rate)
+#         self.dec_layers = torch.nn.ModuleList(
+#             [torch.nn.TransformerDecoderLayer(d_model=d_model,nhead=8,dim_feedforward=max_len,dropout=rate)
+#              for _ in range(num_layers)])
+#         self.dropout = torch.nn.Dropout(rate)
 
-    def forward(self, x, encode_out, memory_mask=None, memory_key_mask=None, tgt_mask=None, tgt_key_mask=None):
+#     def forward(self, x, encode_out, memory_mask=None, memory_key_mask=None, tgt_mask=None, tgt_key_mask=None):
 
-        # adding embedding and position encoding.
-        x = self.embedding(x.to(torch.long))  
-        x *= math.sqrt(self.d_model)
-        x = self.pos_encoding(x)
-        x = self.dropout(x)
+#         # adding embedding and position encoding.
+#         x = self.embedding(x.to(torch.long))  
+#         x *= math.sqrt(self.d_model)
+#         x = self.pos_encoding(x)
+#         x = self.dropout(x)
 
-        #RESHAPE FOR PYTORCH: BxLxV -> LxBxV
-        x = x.permute(1,0,2)
+#         #RESHAPE FOR PYTORCH: BxLxV -> LxBxV
+#         x = x.permute(1,0,2)
         
-        for i in range(self.num_layers):
-            x = self.dec_layers[i](x, encode_out, memory_mask=memory_mask, memory_key_padding_mask=memory_key_mask,
-                                   tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_key_mask)
+#         for i in range(self.num_layers):
+#             x = self.dec_layers[i](x, encode_out, memory_mask=memory_mask, memory_key_padding_mask=memory_key_mask,
+#                                    tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_key_mask)
             
-        #RESHAPE FOR OUTPUT: LxBxV -> BxLxV
-        x = x.permute(1,0,2)
-        return x
+#         #RESHAPE FOR OUTPUT: LxBxV -> BxLxV
+#         x = x.permute(1,0,2)
+#         return x
