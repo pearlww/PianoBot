@@ -2,12 +2,24 @@ from layers import *
 import config
 
 from music_transformer import MusicTransformer
+from transformer import Transformer
+
+
 from data_loader import DataLoader
 import utils
 from processor import decode_midi, encode_midi
+import numpy as np
 
-import datetime
-from tensorboardX import SummaryWriter
+
+# def accuracy(y_hat: torch.Tensor, y: torch.Tensor):
+#     # remove the start token
+#     y = y[1:]
+#     bool_acc = 0
+#     for i in range(len(y_hat)):
+#         if y_hat[i]==y[i]:
+#             bool_acc +=1
+    
+#     return bool_acc/len(y_hat)
 
 
 # check cuda
@@ -16,41 +28,44 @@ if torch.cuda.is_available():
 else:
     config.device = torch.device('cpu')
 
-# current_time = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-# gen_log_dir = 'logs/mt_decoder/generate_'+current_time+'/generate'
-# gen_summary_writer = SummaryWriter(gen_log_dir)
-
 
 mt = MusicTransformer(
     embedding_dim=config.embedding_dim,
     vocab_size=config.vocab_size,
-    num_layer=config.num_layers,
-    max_seq=config.max_seq,
+    num_layer=6,
+    max_seq=256,
     dropout=0)
 
   
-mt.load_state_dict(torch.load(config.model_dir+'/music-final.pth'))
+mt.load_state_dict(torch.load(config.model_dir+'/mtf-seq256.pth'))
 mt.eval()
 
-inputs = np.array([encode_midi(config.input_midi)[:128]])
+dataset = DataLoader(config.pickle_dir+"high/", config.pickle_dir+"low/")
+
+# test_accuracy =[]
+# for i in range(len(dataset.pair_dict['test'])):
+#     x, y = dataset.batch(1, config.max_seq, 'test')
+#     x = torch.from_numpy(x)
+#     y = torch.from_numpy(y).squeeze()
+#     y_hat = mt.generate(x)
+#     # print(y)
+#     # print(y_hat)
+
+#     acc = accuracy(y_hat, y)
+#     print(acc)
+#     test_accuracy.append(acc)
+    
+
+# print("average accuracy:", np.mean(test_accuracy))
+
+
+inputs = np.array([encode_midi(config.input_midi)[:256]])
 print("inputs:", inputs)
-targets = np.array([encode_midi(config.target_midi)[:128]])
+targets = np.array([encode_midi(config.target_midi)[:256]])
 print("targets:", targets)
 
 results = np.array(mt.generate(torch.from_numpy(inputs)))
 print("results:", results)
 
-
-# def remove_padding(results):
-#     ret = []
-#     for c in results:
-#         if c!=388:
-#             ret.append(c)
-#     return ret
-
-# results = remove_padding(results)
-# print("outputs without pad:", result)
-
 decode_midi(results, file_path=config.save_path)
 
-# gen_summary_writer.close()

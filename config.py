@@ -21,7 +21,7 @@ experiment = 'tf-seq128-layer3'
 max_seq = 128
 min_seq = 16
 embedding_dim = 256 #512
-num_layers = 3
+num_layers = 6
 event_dim = 388
 
 
@@ -36,7 +36,7 @@ model_dir = "./models"
 
 
 # generate
-input_midi = './split/high/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
-target_midi = './split/low/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_05_Track05_wav.midi'
+input_midi = './split/high/2008/MIDI-Unprocessed_01_R1_2008_01-04_ORIG_MID--AUDIO_01_R1_2008_wav--3.midi'
+target_midi = './split/low/2008/MIDI-Unprocessed_01_R1_2008_01-04_ORIG_MID--AUDIO_01_R1_2008_wav--3.midi'
 save_path = './output/generated.mid'
-max_length =  128
+max_length =  256
